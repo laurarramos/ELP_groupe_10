@@ -52,3 +52,5 @@ func min3(a, b, c int) int {
 }
 
 #testpackage levenshtein
+
+#test Maksim
