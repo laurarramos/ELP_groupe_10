@@ -84,7 +84,7 @@ func main() {
 	wgWorkers.Add(w)
 
 	for k := 0; k < w; k++ {
-		go worker(k, jobs, results, &wgWorkers, threshold)
+		go worker(jobs, results, &wgWorkers, threshold)
 	}
 
 	// 3) Producer: génère tous les couples i<j et push dans jobs
