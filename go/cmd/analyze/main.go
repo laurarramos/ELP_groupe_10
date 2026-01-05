@@ -30,19 +30,14 @@ func main() {
 
 	csvPath := os.Args[1]
 
-	// nb workers en paramètre
+	// nb workers en paramètre (sans capper pour pouvoir faire des tests)
 	w, err := strconv.Atoi(os.Args[2])
 	if err != nil || w <= 0 {
 		fmt.Println("nb-workers must be a positive integer")
 		os.Exit(1)
 	}
 
-	max := runtime.NumCPU()
-	if w > max {
-		fmt.Printf("nb-workers capped to NumCPU (%d)\n", max)
-		w = max
-	}
-	fmt.Println("Workers:", w, "| NumCPU:", max)
+	fmt.Println("Workers:", w, "| NumCPU:", runtime.NumCPU(), "| GOMAXPROCS:", runtime.GOMAXPROCS(0))
 
 	// Lecture CSV
 	personnes, err := data.LireCSV(csvPath)
@@ -59,21 +54,40 @@ func main() {
 		return
 	}
 
+	threshold := 3
+
 	// Channels
 	jobs := make(chan Pair, 10_000)
 	results := make(chan Match, 10_000)
 
-	// Workers
-	var wg sync.WaitGroup
-	wg.Add(w)
+	// WaitGroups
+	var wgWorkers sync.WaitGroup
+	var wgConsumer sync.WaitGroup
 
-	threshold := 3
+	// 1) Consommateur des résultats
+	wgConsumer.Add(1)
+	go func() {
+		defer wgConsumer.Done()
+		matchCount := 0
+		printLimit := 30
+
+		for m := range results {
+			matchCount++
+			if matchCount <= printLimit {
+				fmt.Printf("d=%d | (%d,%d) %q <-> %q\n", m.dist, m.i, m.j, m.a, m.b)
+			}
+		}
+		fmt.Printf("Total matches with Levenshtein <= %d: %d\n", threshold, matchCount)
+	}()
+
+	// 2) Workers
+	wgWorkers.Add(w)
 
 	for k := 0; k < w; k++ {
-		go worker(k, jobs, results, &wg, threshold)
+		go worker(k, jobs, results, &wgWorkers, threshold)
 	}
 
-	// Producer: génère tous les couples i<j et push dans jobs
+	// 3) Producer: génère tous les couples i<j et push dans jobs
 	go func() {
 		totalPairs := 0
 		for i := 0; i < n; i++ {
@@ -88,27 +102,16 @@ func main() {
 		fmt.Println("Total pairs generated:", totalPairs)
 	}()
 
-	// Fermer results quand tous les workers ont fini
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	// 4) Fermer results quand tous les workers ont fini
+	wgWorkers.Wait()
+	close(results)
 
-	// Consommer résultats
-	matchCount := 0
-	printLimit := 30
+	// 5) Attendre le consommateur
+	wgConsumer.Wait()
 
-	for m := range results {
-		matchCount++
-		if matchCount <= printLimit {
-			fmt.Printf("d=%d | (%d,%d) %q <-> %q\n", m.dist, m.i, m.j, m.a, m.b)
-		}
-	}
-
-	fmt.Printf("Total matches with Levenshtein <= %d: %d\n", threshold, matchCount)
 }
 
-func worker(id int, jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshold int) {
+func worker(jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshold int) {
 	defer wg.Done()
 
 	for p := range jobs {
@@ -118,9 +121,11 @@ func worker(id int, jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, 
 		// filtre
 		if d <= threshold {
 			results <- Match{
-				i: p.i, j: p.j,
+				i:    p.i,
+				j:    p.j,
 				dist: d,
-				a:    p.a, b: p.b,
+				a:    p.a,
+				b:    p.b,
 			}
 		}
 	}
