@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -15,8 +16,9 @@ type Personne struct {
 
 func normalizeNom(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
-	s = strings.Join(strings.Fields(s), " ")
-	return s
+	parts := strings.Fields(s)
+	sort.Strings(parts)
+	return strings.Join(parts, " ")
 }
 
 func LireCSV(cheminFichier string) ([]Personne, error) {
