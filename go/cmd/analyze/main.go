@@ -69,12 +69,14 @@ func main() {
 	go func() {
 		defer wgConsumer.Done()
 		matchCount := 0
-		printLimit := 30
+		printLimit := -1 //pour tout afficher
 
+		printed := 0
 		for m := range results {
 			matchCount++
-			if matchCount <= printLimit {
-				fmt.Printf("d=%d | (%d,%d) %q <-> %q\n", m.dist, m.i, m.j, m.a, m.b)
+			if printLimit < 0 || printed < printLimit {
+				fmt.Printf("d=%d | %q <-> %q\n", m.dist, m.a, m.b)
+				printed++
 			}
 		}
 		fmt.Printf("Total matches with Levenshtein <= %d: %d\n", threshold, matchCount)
