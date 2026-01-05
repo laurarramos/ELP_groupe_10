@@ -6,20 +6,40 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
 	"elp_groupe_10/internal/data"
 	"elp_groupe_10/internal/levenshtein"
 )
 
 type Pair struct {
-	i, j int
-	a, b string
+	i, j         int
+	a, b         string
+	yearA, yearB int
 }
 
 type Match struct {
-	i, j int
-	dist int
-	a, b string
+	i, j         int
+	dist         int
+	a, b         string
+	yearA, yearB int
+}
+
+func extractYear(dateStr string) int {
+	// Parse la date selon le format "JJ/MM/AAAA"
+	date, err := time.Parse("02/01/2006", dateStr)
+	if err != nil {
+		fmt.Printf("Erreur de parsing pour la date %s : %v\n", dateStr, err)
+		return 0 // Retourne 0 en cas d'erreur
+	}
+	return date.Year() // Retourne l'année extraite
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func main() {
@@ -75,11 +95,11 @@ func main() {
 		for m := range results {
 			matchCount++
 			if printLimit < 0 || printed < printLimit {
-				fmt.Printf("d=%d | %q <-> %q\n", m.dist, m.a, m.b)
+				fmt.Printf("d=%d | %q (%d) <-> %q (%d)\n", m.dist, m.a, m.yearA, m.b, m.yearB)
 				printed++
 			}
 		}
-		fmt.Printf("Total matches with Levenshtein <= %d: %d\n", threshold, matchCount)
+		fmt.Printf("Total matches with Levenshtein <= %d and year diff <=1: %d\n", threshold, matchCount)
 	}()
 
 	// 2) Workers
@@ -94,9 +114,11 @@ func main() {
 		totalPairs := 0
 		for i := 0; i < n; i++ {
 			a := personnes[i].NomComplet
+			yearA := extractYear(personnes[i].DateDeces)
 			for j := i + 1; j < n; j++ {
 				b := personnes[j].NomComplet
-				jobs <- Pair{i: i, j: j, a: a, b: b}
+				yearB := extractYear(personnes[j].DateDeces)
+				jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
 				totalPairs++
 			}
 		}
@@ -120,14 +142,18 @@ func worker(jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshol
 		// calcul distance
 		d := levenshtein.Distance(p.a, p.b)
 
+		//calcul de l'écart de l'année de décès
+		yearDiff := abs(p.yearA - p.yearB)
 		// filtre
-		if d <= threshold {
+		if d <= threshold && yearDiff <= 1 {
 			results <- Match{
-				i:    p.i,
-				j:    p.j,
-				dist: d,
-				a:    p.a,
-				b:    p.b,
+				i:     p.i,
+				j:     p.j,
+				dist:  d,
+				a:     p.a,
+				b:     p.b,
+				yearA: p.yearA,
+				yearB: p.yearB,
 			}
 		}
 	}
