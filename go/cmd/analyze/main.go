@@ -43,42 +43,61 @@ func abs(x int) int {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Println("usage: go run ./cmd/analyze <path-to-csv> <nb-workers>")
+	if len(os.Args) != 3 && len(os.Args) != 4 {
+		fmt.Println("usage:")
+		fmt.Println("  go run ./cmd/analyze <csv1> <workers>")
+		fmt.Println("  go run ./cmd/analyze <csv1> <csv2> <workers>")
 		os.Exit(1)
 	}
 
-	csvPath := os.Args[1]
+	threshold := 3
+	printLimit := -1 //pour tout afficher
+
+	var csv1, csv2 string
+	var workersStr string
+	deuxCSV := false
+
+	if len(os.Args) == 3 {
+		csv1 = os.Args[1]
+		workersStr = os.Args[2]
+	} else {
+		deuxCSV = true
+		csv1 = os.Args[1]
+		csv2 = os.Args[2]
+		workersStr = os.Args[3]
+	}
 
 	// nb workers en paramètre (sans capper pour pouvoir faire des tests)
-	w, err := strconv.Atoi(os.Args[2])
+	w, err := strconv.Atoi(workersStr)
 	if err != nil || w <= 0 {
 		fmt.Println("nb-workers must be a positive integer")
 		os.Exit(1)
 	}
 
 	fmt.Println("Workers:", w, "| NumCPU:", runtime.NumCPU(), "| GOMAXPROCS:", runtime.GOMAXPROCS(0))
+	fmt.Println("Threshold:", threshold, "| PrintLimit:", printLimit)
 
 	// Lecture CSV
-	personnes, err := data.LireCSV(csvPath)
+	p1, err := data.LireCSV(csv1)
 	if err != nil {
-		fmt.Println("error:", err)
+		fmt.Println("erreur de lecture du csv1:", err)
 		os.Exit(1)
 	}
+	fmt.Println("CSV1 lignes :", len(p1))
 
-	// On prend les noms/prénoms ensemble (déjà dans Personne.NomComplet)
-	n := len(personnes)
-	fmt.Println("Lignes chargées:", n)
-	if n < 2 {
-		fmt.Println("Not enough rows to build pairs.")
-		return
+	var p2 []data.Personne
+	if deuxCSV {
+		p2, err := data.LireCSV(csv2)
+		if err != nil {
+			fmt.Println("erreur de lecture du csv2:", err)
+			os.Exit(1)
+		}
+		fmt.Println("CSV2 lignes:", len(p2))
 	}
 
-	threshold := 3
-
 	// Channels
-	jobs := make(chan Pair, 10_000)
-	results := make(chan Match, 10_000)
+	jobs := make(chan Pair, 50)
+	results := make(chan Match, 50)
 
 	// WaitGroups
 	var wgWorkers sync.WaitGroup
@@ -86,21 +105,7 @@ func main() {
 
 	// 1) Consommateur des résultats
 	wgConsumer.Add(1)
-	go func() {
-		defer wgConsumer.Done()
-		matchCount := 0
-		printLimit := -1 //pour tout afficher
-
-		printed := 0
-		for m := range results {
-			matchCount++
-			if printLimit < 0 || printed < printLimit {
-				fmt.Printf("d=%d | %q (%d) <-> %q (%d)\n", m.dist, m.a, m.yearA, m.b, m.yearB)
-				printed++
-			}
-		}
-		fmt.Printf("Total matches with Levenshtein <= %d and year diff <=1: %d\n", threshold, matchCount)
-	}()
+	go consumeResults(results, &wgConsumer, threshold, printLimit)
 
 	// 2) Workers
 	wgWorkers.Add(w)
@@ -110,22 +115,11 @@ func main() {
 	}
 
 	// 3) Producer: génère tous les couples i<j et push dans jobs
-	go func() {
-		totalPairs := 0
-		for i := 0; i < n; i++ {
-			a := personnes[i].NomComplet
-			yearA := extractYear(personnes[i].DateDeces)
-			for j := i + 1; j < n; j++ {
-				b := personnes[j].NomComplet
-				yearB := extractYear(personnes[j].DateDeces)
-				jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
-				totalPairs++
-			}
-		}
-		close(jobs)
-		fmt.Println("Total pairs generated:", totalPairs)
-	}()
-
+	if deuxCSV {
+		producePairsTwoCSV(p1, p2, jobs)
+	} else {
+		producePairsOneCSV(p1, jobs)
+	}
 	// 4) Fermer results quand tous les workers ont fini
 	wgWorkers.Wait()
 	close(results)
@@ -133,6 +127,51 @@ func main() {
 	// 5) Attendre le consommateur
 	wgConsumer.Wait()
 
+}
+
+func producePairsOneCSV(p []data.Personne, jobs chan<- Pair) {
+	n := len(p)
+	total := 0
+
+	for i := 0; i < n; i++ {
+		a := p[i].NomComplet
+		yearA := extractYear(p[i].DateDeces)
+
+		for j := i + 1; j < n; j++ {
+			b := p[j].NomComplet
+			yearB := extractYear(p[j].DateDeces)
+
+			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
+			total++
+		}
+	}
+
+	close(jobs)
+	fmt.Println("Total pairs generated (1 CSV):", total)
+}
+
+func producePairsTwoCSV(p1, p2 []data.Personne, jobs chan<- Pair) {
+	fmt.Println("DEBUG n1,n2:", len(p1), len(p2))
+
+	n1 := len(p1)
+	n2 := len(p2)
+	total := 0
+
+	for i := 0; i < n1; i++ {
+		a := p1[i].NomComplet
+		yearA := extractYear(p1[i].DateDeces)
+
+		for j := 0; j < n2; j++ {
+			b := p2[j].NomComplet
+			yearB := extractYear(p2[j].DateDeces)
+
+			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
+			total++
+		}
+	}
+
+	close(jobs)
+	fmt.Println("Total pairs generated (2 CSV):", total)
 }
 
 func worker(jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshold int) {
@@ -157,4 +196,21 @@ func worker(jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshol
 			}
 		}
 	}
+}
+
+func consumeResults(results <-chan Match, wg *sync.WaitGroup, threshold int, printLimit int) {
+	defer wg.Done()
+
+	matchCount := 0
+	printed := 0
+
+	for m := range results {
+		matchCount++
+		if printLimit < 0 || printed < printLimit {
+			fmt.Printf("d=%d | %q (%d) <-> %q (%d)\n", m.dist, m.a, m.yearA, m.b, m.yearB)
+			printed++
+		}
+	}
+
+	fmt.Printf("Total matches with Levenshtein <= %d and year diff <= 1: %d\n", threshold, matchCount)
 }
