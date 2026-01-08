@@ -16,6 +16,8 @@ type Pair struct {
 	i, j         int
 	a, b         string
 	yearA, yearB int
+	dateDecesA   string
+	dateDecesB   string
 }
 
 type Match struct {
@@ -23,10 +25,12 @@ type Match struct {
 	dist         int
 	a, b         string
 	yearA, yearB int
+	dateDecesA   string
+	dateDecesB   string
 }
 
 func extractYear(dateStr string) int {
-	// Parse la date selon le format "JJ/MM/AAAA"
+	// la date selon le format "JJ/MM/AAAA"
 	date, err := time.Parse("02/01/2006", dateStr)
 	if err != nil {
 		fmt.Printf("Erreur de parsing pour la date %s : %v\n", dateStr, err)
@@ -136,12 +140,14 @@ func producePairsOneCSV(p []data.Personne, jobs chan<- Pair) {
 	for i := 0; i < n; i++ {
 		a := p[i].NomComplet
 		yearA := extractYear(p[i].DateDeces)
+		dateDecesA := p[i].DateDeces
 
 		for j := i + 1; j < n; j++ {
 			b := p[j].NomComplet
 			yearB := extractYear(p[j].DateDeces)
+			dateDecesB := p[j].DateDeces
 
-			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
+			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB, dateDecesA: dateDecesA, dateDecesB: dateDecesB}
 			total++
 		}
 	}
@@ -160,12 +166,13 @@ func producePairsTwoCSV(p1, p2 []data.Personne, jobs chan<- Pair) {
 	for i := 0; i < n1; i++ {
 		a := p1[i].NomComplet
 		yearA := extractYear(p1[i].DateDeces)
+		dateDecesA := p1[i].DateDeces
 
 		for j := 0; j < n2; j++ {
 			b := p2[j].NomComplet
 			yearB := extractYear(p2[j].DateDeces)
-
-			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB}
+			dateDecesB := p2[j].DateDeces
+			jobs <- Pair{i: i, j: j, a: a, b: b, yearA: yearA, yearB: yearB, dateDecesA: dateDecesA, dateDecesB: dateDecesB}
 			total++
 		}
 	}
@@ -186,13 +193,15 @@ func worker(jobs <-chan Pair, results chan<- Match, wg *sync.WaitGroup, threshol
 		// filtre
 		if d <= threshold && yearDiff <= 1 {
 			results <- Match{
-				i:     p.i,
-				j:     p.j,
-				dist:  d,
-				a:     p.a,
-				b:     p.b,
-				yearA: p.yearA,
-				yearB: p.yearB,
+				i:          p.i,
+				j:          p.j,
+				dist:       d,
+				a:          p.a,
+				b:          p.b,
+				yearA:      p.yearA,
+				yearB:      p.yearB,
+				dateDecesA: p.dateDecesA,
+				dateDecesB: p.dateDecesB,
 			}
 		}
 	}
@@ -207,7 +216,7 @@ func consumeResults(results <-chan Match, wg *sync.WaitGroup, threshold int, pri
 	for m := range results {
 		matchCount++
 		if printLimit < 0 || printed < printLimit {
-			fmt.Printf("d=%d | %q (%d) <-> %q (%d)\n", m.dist, m.a, m.yearA, m.b, m.yearB)
+			fmt.Printf("d=%d | %q (%s) <-> %q (%s)\n", m.dist, m.a, m.dateDecesA, m.b, m.dateDecesB)
 			printed++
 		}
 	}
