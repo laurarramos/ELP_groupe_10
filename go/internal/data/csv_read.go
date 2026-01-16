@@ -11,7 +11,7 @@ import (
 type Personne struct {
 	NomComplet string
 	Sexo       string
-	DateDeces  string // ou FechaHechos si tu préfères rester proche du CSV
+	DateDeces  string
 }
 
 func normalizeNom(s string) string {

@@ -47,6 +47,8 @@ func abs(x int) int {
 }
 
 func main() {
+	debut := time.Now()
+
 	if len(os.Args) != 3 && len(os.Args) != 4 {
 		fmt.Println("usage:")
 		fmt.Println("  go run ./cmd/analyze <csv1> <workers>")
@@ -91,7 +93,7 @@ func main() {
 
 	var p2 []data.Personne
 	if deuxCSV {
-		p2, err := data.LireCSV(csv2)
+		p2, err = data.LireCSV(csv2)
 		if err != nil {
 			fmt.Println("erreur de lecture du csv2:", err)
 			os.Exit(1)
@@ -131,6 +133,8 @@ func main() {
 	// 5) Attendre le consommateur
 	wgConsumer.Wait()
 
+	duree := time.Since(debut)
+	fmt.Printf("Durée totale exécution: %v\n", duree)
 }
 
 func producePairsOneCSV(p []data.Personne, jobs chan<- Pair) {
@@ -157,7 +161,6 @@ func producePairsOneCSV(p []data.Personne, jobs chan<- Pair) {
 }
 
 func producePairsTwoCSV(p1, p2 []data.Personne, jobs chan<- Pair) {
-	fmt.Println("DEBUG n1,n2:", len(p1), len(p2))
 
 	n1 := len(p1)
 	n2 := len(p2)
