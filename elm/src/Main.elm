@@ -52,6 +52,7 @@ type Msg
     | GotDefinitions (Result Http.Error (List String))
     | AnswerChanged String
     | SubmitAnswer
+    | Refresh
 
 
 
@@ -184,6 +185,28 @@ update msg model =
             , Cmd.none
             )
 
+
+-- BOUTON REFRESH
+refreshButton : Msg -> Html Msg
+refreshButton msg =
+    button
+        [ onClick msg
+        , style "margin-top" "12px"
+        , style "background-color" "#333"
+        , style "color" "white"
+        , style "padding" "10px 16px"
+        ]
+        [ text "Refresh" ]
+
+
+maybeRefreshButton : Maybe Msg -> Html Msg
+maybeRefreshButton maybeMsg =
+    case maybeMsg of
+        Just msg ->
+            refreshButton msg
+
+        Nothing ->
+            text ""
             
 
 -- VIEW
