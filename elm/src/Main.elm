@@ -172,27 +172,33 @@ update msg model =
             ( { model | answer = s }, Cmd.none )
 
         SubmitAnswer ->
-            let
-                isAnswerCorrect =
-                    case model.pickedWord of
-                        Just w ->
-                            String.toLower model.answer == String.toLower w
+            if model.remainingTries == 0 then
+                ( model, Cmd.none )
 
-                        Nothing ->
-                            False
-                newRemainingTries =
-                    if isAnswerCorrect then
-                        model.remainingTries
-                    else 
-                        max 0 (model.remainingTries - 1)
-            in
-            ( { model
-                | lastSubmitted = model.answer
-                , isCorrect = Just isAnswerCorrect
-                , remainingTries = newRemainingTries
-            }
-            , Cmd.none
-            )
+            else
+                let
+                    isAnswerCorrect =
+                        case model.pickedWord of
+                            Just w ->
+                                String.toLower model.answer == String.toLower w
+
+                            Nothing ->
+                                False
+
+                    newRemainingTries =
+                        if isAnswerCorrect then
+                            model.remainingTries
+                        else
+                            max 0 (model.remainingTries - 1)
+                in
+                ( { model
+                    | lastSubmitted = model.answer
+                    , isCorrect = Just isAnswerCorrect
+                    , remainingTries = newRemainingTries
+                  }
+                , Cmd.none
+                )
+
 
         Refresh ->
             case model.words of
@@ -203,6 +209,7 @@ update msg model =
                     in
                     if maxIndex < 0 then
                         ( model, Cmd.none )
+
                     else
                         ( { model
                             | pickedWord = Nothing
@@ -210,12 +217,14 @@ update msg model =
                             , answer = ""
                             , lastSubmitted = ""
                             , isCorrect = Nothing
-                          }
+                            , remainingTries = 3
+                        }
                         , Random.generate GotRandomIndex (Random.int 0 maxIndex)
                         )
 
                 _ ->
                     ( model, Cmd.none )
+
 
 
 -- BOUTON REFRESH

@@ -6577,27 +6577,31 @@ var $author$project$Main$update = F2(
 						{answer: s}),
 					$elm$core$Platform$Cmd$none);
 			case 'SubmitAnswer':
-				var isAnswerCorrect = function () {
-					var _v5 = model.pickedWord;
-					if (_v5.$ === 'Just') {
-						var w = _v5.a;
-						return _Utils_eq(
-							$elm$core$String$toLower(model.answer),
-							$elm$core$String$toLower(w));
-					} else {
-						return false;
-					}
-				}();
-				var newRemainingTries = isAnswerCorrect ? model.remainingTries : A2($elm$core$Basics$max, 0, model.remainingTries - 1);
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							isCorrect: $elm$core$Maybe$Just(isAnswerCorrect),
-							lastSubmitted: model.answer,
-							remainingTries: newRemainingTries
-						}),
-					$elm$core$Platform$Cmd$none);
+				if (!model.remainingTries) {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				} else {
+					var isAnswerCorrect = function () {
+						var _v5 = model.pickedWord;
+						if (_v5.$ === 'Just') {
+							var w = _v5.a;
+							return _Utils_eq(
+								$elm$core$String$toLower(model.answer),
+								$elm$core$String$toLower(w));
+						} else {
+							return false;
+						}
+					}();
+					var newRemainingTries = isAnswerCorrect ? model.remainingTries : A2($elm$core$Basics$max, 0, model.remainingTries - 1);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								isCorrect: $elm$core$Maybe$Just(isAnswerCorrect),
+								lastSubmitted: model.answer,
+								remainingTries: newRemainingTries
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 			default:
 				var _v6 = model.words;
 				if (_v6.$ === 'Success') {
@@ -6606,7 +6610,7 @@ var $author$project$Main$update = F2(
 					return (maxIndex < 0) ? _Utils_Tuple2(model, $elm$core$Platform$Cmd$none) : _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing}),
+							{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, remainingTries: 3}),
 						A2(
 							$elm$random$Random$generate,
 							$author$project$Main$GotRandomIndex,
