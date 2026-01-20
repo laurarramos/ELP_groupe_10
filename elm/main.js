@@ -6576,7 +6576,7 @@ var $author$project$Main$update = F2(
 						model,
 						{answer: s}),
 					$elm$core$Platform$Cmd$none);
-			default:
+			case 'SubmitAnswer':
 				var isAnswerCorrect = function () {
 					var _v5 = model.pickedWord;
 					if (_v5.$ === 'Just') {
@@ -6598,6 +6598,22 @@ var $author$project$Main$update = F2(
 							remainingTries: newRemainingTries
 						}),
 					$elm$core$Platform$Cmd$none);
+			default:
+				var _v6 = model.words;
+				if (_v6.$ === 'Success') {
+					var ws = _v6.a;
+					var maxIndex = $elm$core$List$length(ws) - 1;
+					return (maxIndex < 0) ? _Utils_Tuple2(model, $elm$core$Platform$Cmd$none) : _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing}),
+						A2(
+							$elm$random$Random$generate,
+							$author$project$Main$GotRandomIndex,
+							A2($elm$random$Random$int, 0, maxIndex)));
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
 		}
 	});
 var $author$project$Main$AnswerChanged = function (a) {
@@ -6605,56 +6621,6 @@ var $author$project$Main$AnswerChanged = function (a) {
 };
 var $author$project$Main$SubmitAnswer = {$: 'SubmitAnswer'};
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$core$Basics$not = _Basics_not;
-var $author$project$Main$filterDefinitions = F2(
-	function (word, defs) {
-		var loweredWord = $elm$core$String$toLower(word);
-		return A2(
-			$elm$core$List$filter,
-			function (d) {
-				return !A2(
-					$elm$core$String$contains,
-					loweredWord,
-					$elm$core$String$toLower(d));
-			},
-			defs);
-	});
-var $elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
-var $author$project$Main$definitionText = F2(
-	function (maybeWord, defs) {
-		switch (defs.$) {
-			case 'NotAsked':
-				return '...';
-			case 'Loading':
-				return 'Loading definition...';
-			case 'Failure':
-				return 'Error while fetching definition (word not found or API error).';
-			default:
-				var ds = defs.a;
-				if (maybeWord.$ === 'Nothing') {
-					return '...';
-				} else {
-					var word = maybeWord.a;
-					var filtered = A2($author$project$Main$filterDefinitions, word, ds);
-					return $elm$core$List$isEmpty(filtered) ? 'All definitions contained the word.' : A2(
-						$elm$core$String$join,
-						'\n',
-						A2(
-							$elm$core$List$indexedMap,
-							F2(
-								function (i, d) {
-									return $elm$core$String$fromInt(i + 1) + ('. ' + d);
-								}),
-							filtered));
-				}
-		}
-	});
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -6736,6 +6702,112 @@ var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$Refresh = {$: 'Refresh'};
+var $author$project$Main$refreshButton = function (msg) {
+	return A2(
+		$elm$html$Html$button,
+		_List_fromArray(
+			[
+				$elm$html$Html$Events$onClick(msg),
+				A2($elm$html$Html$Attributes$style, 'margin-top', '12px'),
+				A2($elm$html$Html$Attributes$style, 'background-color', '#333'),
+				A2($elm$html$Html$Attributes$style, 'color', 'white'),
+				A2($elm$html$Html$Attributes$style, 'padding', '10px 16px')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text('Refresh')
+			]));
+};
+var $author$project$Main$maybeRefreshButton = function (maybeMsg) {
+	if (maybeMsg.$ === 'Just') {
+		var msg = maybeMsg.a;
+		return $author$project$Main$refreshButton(msg);
+	} else {
+		return $elm$html$Html$text('');
+	}
+};
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Main$viewResult = function (model) {
+	var _v0 = _Utils_Tuple3(model.isCorrect, model.remainingTries, model.pickedWord);
+	if (_v0.a.$ === 'Just') {
+		if (_v0.a.a) {
+			return A2(
+				$elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'color', 'green'),
+								A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Well done!')
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								'Congratulations! You guessed the word: ' + A2($elm$core$Maybe$withDefault, '', model.pickedWord))
+							])),
+						$author$project$Main$maybeRefreshButton(
+						$elm$core$Maybe$Just($author$project$Main$Refresh))
+					]));
+		} else {
+			if ((!_v0.b) && (_v0.c.$ === 'Just')) {
+				var word = _v0.c.a;
+				return A2(
+					$elm$html$Html$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'color', 'red'),
+									A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('You lost! The word was: ' + word)
+								])),
+							$author$project$Main$maybeRefreshButton(
+							$elm$core$Maybe$Just($author$project$Main$Refresh))
+						]));
+			} else {
+				return A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'color', 'red'),
+							A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							'Wrong answer, try again! You still have ' + ($elm$core$String$fromInt(model.remainingTries) + ' tries.'))
+						]));
+			}
+		}
+	} else {
+		return $elm$html$Html$text('');
+	}
+};
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -6749,16 +6821,52 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$text('Definition:')
 					])),
-				A2(
-				$elm$html$Html$textarea,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$value(
-						A2($author$project$Main$definitionText, model.pickedWord, model.defs)),
-						$elm$html$Html$Attributes$readonly(true),
-						$elm$html$Html$Attributes$rows(10)
-					]),
-				_List_Nil),
+				function () {
+				var _v0 = model.defs;
+				switch (_v0.$) {
+					case 'Success':
+						var ds = _v0.a;
+						return A2(
+							$elm$html$Html$textarea,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(
+									A2(
+										$elm$core$String$join,
+										'\n',
+										A2(
+											$elm$core$List$indexedMap,
+											F2(
+												function (i, d) {
+													return $elm$core$String$fromInt(i + 1) + ('. ' + d);
+												}),
+											ds))),
+									$elm$html$Html$Attributes$readonly(true),
+									$elm$html$Html$Attributes$rows(10),
+									A2($elm$html$Html$Attributes$style, 'width', '100%'),
+									A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+								]),
+							_List_Nil);
+					case 'Loading':
+						return A2(
+							$elm$html$Html$div,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Loading definition...')
+								]));
+					case 'Failure':
+						return A2(
+							$elm$html$Html$div,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Error while fetching definition.')
+								]));
+					default:
+						return $elm$html$Html$text('');
+				}
+			}(),
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
@@ -6781,8 +6889,8 @@ var $author$project$Main$view = function (model) {
 								$elm$html$Html$Attributes$placeholder('Write your answer here'),
 								$elm$html$Html$Attributes$value(model.answer),
 								$elm$html$Html$Events$onInput($author$project$Main$AnswerChanged),
-								A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box'),
-								A2($elm$html$Html$Attributes$style, 'padding', '12px')
+								A2($elm$html$Html$Attributes$style, 'padding', '12px'),
+								A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
 							]),
 						_List_Nil),
 						A2(
@@ -6791,7 +6899,8 @@ var $author$project$Main$view = function (model) {
 							[
 								$elm$html$Html$Events$onClick($author$project$Main$SubmitAnswer),
 								A2($elm$html$Html$Attributes$style, 'margin', '15px 20px'),
-								A2($elm$html$Html$Attributes$style, 'background-color', '#333')
+								A2($elm$html$Html$Attributes$style, 'background-color', '#333'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white')
 							]),
 						_List_fromArray(
 							[
@@ -6807,54 +6916,7 @@ var $author$project$Main$view = function (model) {
 							[
 								$elm$html$Html$text('Last submitted answer: ' + model.lastSubmitted)
 							])),
-						function () {
-						var _v0 = _Utils_Tuple3(model.isCorrect, model.remainingTries, model.pickedWord);
-						if (_v0.a.$ === 'Just') {
-							if (_v0.a.a) {
-								return A2(
-									$elm$html$Html$div,
-									_List_fromArray(
-										[
-											A2($elm$html$Html$Attributes$style, 'color', 'green'),
-											A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
-										]),
-									_List_fromArray(
-										[
-											$elm$html$Html$text('Bravo !')
-										]));
-							} else {
-								if ((!_v0.b) && (_v0.c.$ === 'Just')) {
-									var word = _v0.c.a;
-									return A2(
-										$elm$html$Html$div,
-										_List_fromArray(
-											[
-												A2($elm$html$Html$Attributes$style, 'color', 'red'),
-												A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
-											]),
-										_List_fromArray(
-											[
-												$elm$html$Html$text('Perdu! Le mot était : ' + word)
-											]));
-								} else {
-									return A2(
-										$elm$html$Html$div,
-										_List_fromArray(
-											[
-												A2($elm$html$Html$Attributes$style, 'color', 'red'),
-												A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
-											]),
-										_List_fromArray(
-											[
-												$elm$html$Html$text(
-												'Dommage, essaie encore ! Il te reste ' + ($elm$core$String$fromInt(model.remainingTries) + 'essais.'))
-											]));
-								}
-							}
-						} else {
-							return $elm$html$Html$text('');
-						}
-					}()
+						$author$project$Main$viewResult(model)
 					]))
 			]));
 };

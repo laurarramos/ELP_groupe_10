@@ -7,6 +7,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
 import Random
+import Char
 
 
 -- MODEL
@@ -54,6 +55,7 @@ type Msg
     | GotDefinitions (Result Http.Error (List String))
     | AnswerChanged String
     | SubmitAnswer
+    | Refresh
 
 
 
@@ -192,54 +194,208 @@ update msg model =
             , Cmd.none
             )
 
+        Refresh ->
+            case model.words of
+                Success ws ->
+                    let
+                        maxIndex =
+                            List.length ws - 1
+                    in
+                    if maxIndex < 0 then
+                        ( model, Cmd.none )
+                    else
+                        ( { model
+                            | pickedWord = Nothing
+                            , defs = NotAsked
+                            , answer = ""
+                            , lastSubmitted = ""
+                            , isCorrect = Nothing
+                          }
+                        , Random.generate GotRandomIndex (Random.int 0 maxIndex)
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+-- BOUTON REFRESH
+refreshButton : Msg -> Html Msg
+refreshButton msg =
+    button
+        [ onClick msg
+        , style "margin-top" "12px"
+        , style "background-color" "#333"
+        , style "color" "white"
+        , style "padding" "10px 16px"
+        ]
+        [ text "Refresh" ]
+
+
+maybeRefreshButton : Maybe Msg -> Html Msg
+maybeRefreshButton maybeMsg =
+    case maybeMsg of
+        Just msg ->
+            refreshButton msg
+
+        Nothing ->
+            text ""
             
 
 -- VIEW
-
 
 view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Definition:" ]
-        , textarea
-            [ value (definitionText model.pickedWord model.defs)
-            , readonly True
-            , rows 10
-            ]
-            []
+        , case model.defs of
+            Success ds ->
+                textarea
+                    [ value
+                        (ds
+                            |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
+                            |> String.join "\n"
+                        )
+                    , readonly True
+                    , rows 10
+                    , style "width" "100%"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+
+            Loading ->
+                div [] [ text "Loading definition..." ]
+
+            Failure _ ->
+                div [] [ text "Error while fetching definition." ]
+
+            NotAsked ->
+                text ""
         , div [ style "margin-top" "16px" ]
             [ h2 [] [ text "Your answer:" ]
             , input
                 [ placeholder "Write your answer here"
                 , value model.answer
                 , onInput AnswerChanged
-                , style "box-sizing" "border-box"
                 , style "padding" "12px"
+                , style "box-sizing" "border-box"
                 ]
                 []
             , button
                 [ onClick SubmitAnswer
                 , style "margin" "15px 20px"
                 , style "background-color" "#333"
+                , style "color" "white"
                 ]
                 [ text "Validate" ]
             , div [ style "margin-top" "12px" ]
                 [ text ("Last submitted answer: " ++ model.lastSubmitted) ]
-            , case (model.isCorrect, model.remainingTries, model.pickedWord) of
+            , viewResult model 
+            ]
+
+        ]
+
+
+viewResult : Model -> Html Msg 
+viewResult model =
+    case (model.isCorrect, model.remainingTries, model.pickedWord) of
                 (Just True,_,_) ->
-                    div [ style "color" "green", style "margin-top" "12px" ]
-                        [ text "Bravo !" ]
+                    div []
+                        [div [ style "color" "green", style "margin-top" "12px" ]
+                            [ text "Well done!" ]
+                        , div []
+                            [ text
+                                ("Congratulations! You guessed the word: "
+                                    ++ (model.pickedWord |> Maybe.withDefault "")
+                                )
+                            ]
+                        , maybeRefreshButton (Just Refresh)
+                        ]
                 (Just False, 0, Just word) ->
-                    div [ style "color" "red", style "margin-top" "12px" ]
-                        [ text ("Perdu! Le mot était : " ++ word) ]
+                    div []
+                    [div [ style "color" "red", style "margin-top" "12px" ]
+                        [ text ("You lost! The word was: " ++ word) ]
+                    , maybeRefreshButton (Just Refresh)
+                    ]
                 (Just False,_, _) ->
                     div [ style "color" "red", style "margin-top" "12px" ]
-                        [ text ("Dommage, essaie encore ! Il te reste " ++ String.fromInt model.remainingTries ++ "essais." )]
-                
+                        [ text ("Wrong answer, try again! You still have " ++ String.fromInt model.remainingTries ++ " tries." )]
+                        
                 _ ->
                     text ""
-            ]
-        ]
+
+
+-- Nettoie et découpe une définition en "mots" (sans ponctuation)
+tokenize : String -> List String
+tokenize s =
+    s
+        |> String.toLower
+        |> String.map (\c -> if Char.isAlpha c then c else ' ')
+        |> String.words
+
+
+-- Un stemmer simple : gère pluriels + ing/ed + quelques règles courantes
+stem : String -> String
+stem raw =
+    let
+        w =
+            raw
+                |> String.toLower
+                |> String.filter Char.isAlpha
+
+        dropSuffix suf str =
+            if String.endsWith suf str && String.length str > String.length suf + 2 then
+                String.left (String.length str - String.length suf) str
+            else
+                str
+
+        -- ex: "studies" -> "study"
+        fixIes str =
+            if String.endsWith "ies" str && String.length str > 4 then
+                String.left (String.length str - 3) str ++ "y"
+            else
+                str
+
+        -- ex: "stopped" -> "stop" (double consonne après retrait)
+        undouble str =
+            let
+                n = String.length str
+            in
+            if n >= 2 then
+                let
+                    a = String.slice (n - 1) n str
+                    b = String.slice (n - 2) (n - 1) str
+                in
+                if a == b then
+                    String.left (n - 1) str
+                else
+                    str
+            else
+                str
+    in
+    w
+        |> fixIes
+        |> dropSuffix "ing"
+        |> dropSuffix "ed"
+        |> dropSuffix "es"
+        |> dropSuffix "s"
+        |> undouble
+
+
+-- Vrai si la def contient une forme "proche" du mot (via stem)
+isCheatingDefinition : String -> String -> Bool
+isCheatingDefinition word def =
+    let
+        wStem =
+            stem word
+
+        tokens =
+            tokenize def
+
+        tokenStems =
+            List.map stem tokens
+    in
+    -- si un token a le même stem que le mot, on considère que ça triche
+    List.any (\tStem -> tStem /= "" && tStem == wStem) tokenStems
 
 
 definitionText :
