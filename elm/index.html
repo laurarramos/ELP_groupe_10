@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guess the word !</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,8 +14,32 @@
 
         h1 {
             color: #333;
+            font-size: 55px;
         }
 
+        h2 {
+            color: #555;
+            font-size: 33px;
+        }
+
+        textarea{
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            display: block;
+            padding: 12px;
+            font-size: 16px;
+            line-height: 1.5;
+            text-align: left;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            resize: none;
+            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Le conteneur Elm */
         #elm-app {
             background-color: white;
             border-radius: 8px;
@@ -24,13 +47,6 @@
             margin: 20px auto;
             max-width: 300px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .counter-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
         }
 
         button {
@@ -46,30 +62,19 @@
         button:hover {
             background-color: #0056b3;
         }
-
-        .counter-value {
-            font-size: 24px;
-            min-width: 50px;
-            text-align: center;
-        }
     </style>
+    <title>Guess the word !</title>
 </head>
 <body>
     <h1>Guess the word !</h1>
-  
 
-    <!-- L'élément où l'application Elm sera insérée -->
-    <div id="elm-main"></div>
+    <!-- Ici Elm rend toute l’UI dynamique -->
+    <div id="elm-app"></div>
 
-    <!-- Inclure le fichier JavaScript compilé depuis Elm -->
     <script src="main.js"></script>
-
-    <!-- Script pour initialiser l'application Elm -->
     <script>
-        // Initialiser l'application Elm en passant la valeur initiale (0)
-        const app = Elm.Main.init({
-            node: document.getElementById('elm-main'),
-            flags: 0
+        Elm.Main.init({
+            node: document.getElementById('elm-app')
         });
     </script>
 </body>
