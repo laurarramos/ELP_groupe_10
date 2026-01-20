@@ -7,6 +7,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
 import Random
+import Char
 
 
 -- MODEL
@@ -260,6 +261,85 @@ view model =
                     text ""
             ]
         ]
+
+-- Nettoie et découpe une définition en "mots" (sans ponctuation)
+tokenize : String -> List String
+tokenize s =
+    s
+        |> String.toLower
+        |> String.map (\c -> if Char.isAlpha c then c else ' ')
+        |> String.words
+
+
+-- Un stemmer simple : gère pluriels + ing/ed + quelques règles courantes
+stem : String -> String
+stem raw =
+    let
+        w =
+            raw
+                |> String.toLower
+                |> String.filter Char.isAlpha
+
+        dropSuffix suf str =
+            if String.endsWith suf str && String.length str > String.length suf + 2 then
+                String.left (String.length str - String.length suf) str
+            else
+                str
+
+        -- ex: "studies" -> "study"
+        fixIes str =
+            if String.endsWith "ies" str && String.length str > 4 then
+                String.left (String.length str - 3) str ++ "y"
+            else
+                str
+
+        -- ex: "stopped" -> "stop" (double consonne après retrait)
+        undouble str =
+            let
+                n = String.length str
+            in
+            if n >= 2 then
+                let
+                    a = String.slice (n - 1) n str
+                    b = String.slice (n - 2) (n - 1) str
+                in
+                if a == b then
+                    String.left (n - 1) str
+                else
+                    str
+            else
+                str
+    in
+    w
+        |> fixIes
+        |> dropSuffix "ing"
+        |> dropSuffix "ed"
+        |> dropSuffix "es"
+        |> dropSuffix "s"
+        |> undouble
+
+
+-- Vrai si la def contient une forme "proche" du mot (via stem)
+isCheatingDefinition : String -> String -> Bool
+isCheatingDefinition word def =
+    let
+        wStem =
+            stem word
+
+        tokens =
+            tokenize def
+
+        tokenStems =
+            List.map stem tokens
+    in
+    -- si un token a le même stem que le mot, on considère que ça triche
+    List.any (\tStem -> tStem /= "" && tStem == wStem) tokenStems
+
+
+filterDefinitions : String -> List String -> List String
+filterDefinitions word defs =
+    defs
+        |> List.filter (\d -> not
 
 
 definitionText :
