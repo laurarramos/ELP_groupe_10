@@ -186,6 +186,29 @@ update msg model =
             , Cmd.none
             )
 
+        Refresh ->
+            case model.words of
+                Success ws ->
+                    let
+                        maxIndex =
+                            List.length ws - 1
+                    in
+                    if maxIndex < 0 then
+                        ( model, Cmd.none )
+                    else
+                        ( { model
+                            | pickedWord = Nothing
+                            , defs = NotAsked
+                            , answer = ""
+                            , lastSubmitted = ""
+                            , isCorrect = Nothing
+                          }
+                        , Random.generate GotRandomIndex (Random.int 0 maxIndex)
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 -- BOUTON REFRESH
 refreshButton : Msg -> Html Msg
@@ -212,50 +235,67 @@ maybeRefreshButton maybeMsg =
 
 -- VIEW
 
-
 view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Definition:" ]
-        , textarea
-            [ value (definitionText model.pickedWord model.defs)
-            , readonly True
-            , rows 10
-            ]
-            []
+        , case model.defs of
+            Success ds ->
+                textarea
+                    [ value
+                        (ds
+                            |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
+                            |> String.join "\n"
+                        )
+                    , readonly True
+                    , rows 10
+                    , style "width" "100%"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+
+            Loading ->
+                div [] [ text "Loading definition..." ]
+
+            Failure _ ->
+                div [] [ text "Error while fetching definition." ]
+
+            NotAsked ->
+                text ""
         , div [ style "margin-top" "16px" ]
             [ h2 [] [ text "Your answer:" ]
             , input
                 [ placeholder "Write your answer here"
                 , value model.answer
                 , onInput AnswerChanged
-                , style "box-sizing" "border-box"
                 , style "padding" "12px"
+                , style "box-sizing" "border-box"
                 ]
                 []
             , button
                 [ onClick SubmitAnswer
                 , style "margin" "15px 20px"
                 , style "background-color" "#333"
+                , style "color" "white"
                 ]
                 [ text "Validate" ]
-            , div [ style "margin-top" "12px" ]
-                [ text ("Last submitted answer: " ++ model.lastSubmitted) ]
             , case model.isCorrect of
                 Just True ->
-                    div [ style "color" "green", style "margin-top" "12px" ]
-                        [ h2 [] [ text "Well done!" ]
+                    div []
+                        [ div [ style "color" "green", style "margin-top" "12px" ]
+                            [ text "Well done!" ]
                         , div []
                             [ text
                                 ("Congratulations! You guessed the word: "
                                     ++ (model.pickedWord |> Maybe.withDefault "")
                                 )
                             ]
+                        , maybeRefreshButton (Just Refresh)
                         ]
 
                 Just False ->
                     div [ style "color" "red", style "margin-top" "12px" ]
-                        [ text "Too bad, try again. !" ]
+                        [ text "Wrong answer, try again!" ]
 
                 Nothing ->
                     text ""
@@ -334,12 +374,6 @@ isCheatingDefinition word def =
     in
     -- si un token a le même stem que le mot, on considère que ça triche
     List.any (\tStem -> tStem /= "" && tStem == wStem) tokenStems
-
-
-filterDefinitions : String -> List String -> List String
-filterDefinitions word defs =
-    defs
-        |> List.filter (\d -> not
 
 
 definitionText :
