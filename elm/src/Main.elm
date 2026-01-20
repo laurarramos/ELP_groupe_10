@@ -179,7 +179,7 @@ view model =
         [ h2 [] [ text ("Word: " ++ (model.pickedWord |> Maybe.withDefault "...")) ]
         , h2 [] [ text "Definition:" ]
         , textarea
-            [ value (definitionText model.defs)
+            [ value (definitionText model.pickedWord model.defs)
             , readonly True
             , rows 10
             ]
@@ -206,8 +206,11 @@ view model =
         ]
 
 
-definitionText : RemoteData Http.Error (List String) -> String
-definitionText defs =
+definitionText :
+    Maybe String
+    -> RemoteData Http.Error (List String)
+    -> String
+definitionText maybeWord defs =
     case defs of
         NotAsked ->
             "..."
@@ -219,13 +222,36 @@ definitionText defs =
             "Error while fetching definition (word not found or API error)."
 
         Success ds ->
-            if List.isEmpty ds then
-                "No definition found."
+            case maybeWord of
+                Nothing ->
+                    "..."
 
-            else
-                ds
-                    |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
-                    |> String.join "\n"
+                Just word ->
+                    let
+                        filtered =
+                            filterDefinitions word ds
+                    in
+                    if List.isEmpty filtered then
+                        "All definitions contained the word."
+
+                    else
+                        filtered
+                            |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
+                            |> String.join "\n"
+
+
+filterDefinitions : String -> List String -> List String
+filterDefinitions word defs =
+    let
+        loweredWord =
+            String.toLower word
+    in
+    defs
+        |> List.filter
+            (\d ->
+                not
+                    (String.contains loweredWord (String.toLower d))
+            )
 
 
 

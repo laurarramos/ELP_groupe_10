@@ -6588,6 +6588,21 @@ var $author$project$Main$AnswerChanged = function (a) {
 };
 var $author$project$Main$SubmitAnswer = {$: 'SubmitAnswer'};
 var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$Basics$not = _Basics_not;
+var $elm$core$String$toLower = _String_toLower;
+var $author$project$Main$filterDefinitions = F2(
+	function (word, defs) {
+		var loweredWord = $elm$core$String$toLower(word);
+		return A2(
+			$elm$core$List$filter,
+			function (d) {
+				return !A2(
+					$elm$core$String$contains,
+					loweredWord,
+					$elm$core$String$toLower(d));
+			},
+			defs);
+	});
 var $elm$core$List$isEmpty = function (xs) {
 	if (!xs.b) {
 		return true;
@@ -6595,28 +6610,35 @@ var $elm$core$List$isEmpty = function (xs) {
 		return false;
 	}
 };
-var $author$project$Main$definitionText = function (defs) {
-	switch (defs.$) {
-		case 'NotAsked':
-			return '...';
-		case 'Loading':
-			return 'Loading definition...';
-		case 'Failure':
-			return 'Error while fetching definition (word not found or API error).';
-		default:
-			var ds = defs.a;
-			return $elm$core$List$isEmpty(ds) ? 'No definition found.' : A2(
-				$elm$core$String$join,
-				'\n',
-				A2(
-					$elm$core$List$indexedMap,
-					F2(
-						function (i, d) {
-							return $elm$core$String$fromInt(i + 1) + ('. ' + d);
-						}),
-					ds));
-	}
-};
+var $author$project$Main$definitionText = F2(
+	function (maybeWord, defs) {
+		switch (defs.$) {
+			case 'NotAsked':
+				return '...';
+			case 'Loading':
+				return 'Loading definition...';
+			case 'Failure':
+				return 'Error while fetching definition (word not found or API error).';
+			default:
+				var ds = defs.a;
+				if (maybeWord.$ === 'Nothing') {
+					return '...';
+				} else {
+					var word = maybeWord.a;
+					var filtered = A2($author$project$Main$filterDefinitions, word, ds);
+					return $elm$core$List$isEmpty(filtered) ? 'All definitions contained the word.' : A2(
+						$elm$core$String$join,
+						'\n',
+						A2(
+							$elm$core$List$indexedMap,
+							F2(
+								function (i, d) {
+									return $elm$core$String$fromInt(i + 1) + ('. ' + d);
+								}),
+							filtered));
+				}
+		}
+	});
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -6733,7 +6755,7 @@ var $author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						$elm$html$Html$Attributes$value(
-						$author$project$Main$definitionText(model.defs)),
+						A2($author$project$Main$definitionText, model.pickedWord, model.defs)),
 						$elm$html$Html$Attributes$readonly(true),
 						$elm$html$Html$Attributes$rows(10)
 					]),
