@@ -6217,7 +6217,7 @@ var $author$project$Main$fetchWords = $elm$http$Http$get(
 	});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{answer: '', defs: $author$project$Main$NotAsked, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, words: $author$project$Main$Loading},
+		{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, words: $author$project$Main$Loading},
 		$author$project$Main$fetchWords);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6489,6 +6489,7 @@ var $author$project$Main$parseWords = function (content) {
 		},
 		$elm$core$String$words(content));
 };
+var $elm$core$String$toLower = _String_toLower;
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -6576,10 +6577,24 @@ var $author$project$Main$update = F2(
 						{answer: s}),
 					$elm$core$Platform$Cmd$none);
 			default:
+				var isAnswerCorrect = function () {
+					var _v5 = model.pickedWord;
+					if (_v5.$ === 'Just') {
+						var w = _v5.a;
+						return _Utils_eq(
+							$elm$core$String$toLower(model.answer),
+							$elm$core$String$toLower(w));
+					} else {
+						return false;
+					}
+				}();
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{lastSubmitted: model.answer}),
+						{
+							isCorrect: $elm$core$Maybe$Just(isAnswerCorrect),
+							lastSubmitted: model.answer
+						}),
 					$elm$core$Platform$Cmd$none);
 		}
 	});
@@ -6589,7 +6604,6 @@ var $author$project$Main$AnswerChanged = function (a) {
 var $author$project$Main$SubmitAnswer = {$: 'SubmitAnswer'};
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$core$Basics$not = _Basics_not;
-var $elm$core$String$toLower = _String_toLower;
 var $author$project$Main$filterDefinitions = F2(
 	function (word, defs) {
 		var loweredWord = $elm$core$String$toLower(word);
@@ -6720,29 +6734,12 @@ var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
 		_List_fromArray(
 			[
-				A2(
-				$elm$html$Html$h2,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text(
-						'Word: ' + A2($elm$core$Maybe$withDefault, '...', model.pickedWord))
-					])),
 				A2(
 				$elm$html$Html$h2,
 				_List_Nil,
@@ -6791,7 +6788,7 @@ var $author$project$Main$view = function (model) {
 						_List_fromArray(
 							[
 								$elm$html$Html$Events$onClick($author$project$Main$SubmitAnswer),
-								A2($elm$html$Html$Attributes$style, 'margin', '15px 20px 15px 20px'),
+								A2($elm$html$Html$Attributes$style, 'margin', '15px 20px'),
 								A2($elm$html$Html$Attributes$style, 'background-color', '#333')
 							]),
 						_List_fromArray(
@@ -6807,7 +6804,39 @@ var $author$project$Main$view = function (model) {
 						_List_fromArray(
 							[
 								$elm$html$Html$text('Last submitted answer: ' + model.lastSubmitted)
-							]))
+							])),
+						function () {
+						var _v0 = model.isCorrect;
+						if (_v0.$ === 'Just') {
+							if (_v0.a) {
+								return A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'color', 'green'),
+											A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Bravo !')
+										]));
+							} else {
+								return A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'color', 'red'),
+											A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Dommage, essaie encore !')
+										]));
+							}
+						} else {
+							return $elm$html$Html$text('');
+						}
+					}()
 					]))
 			]));
 };

@@ -25,6 +25,7 @@ type alias Model =
     , defs : RemoteData Http.Error (List String)
     , answer : String
     , lastSubmitted : String
+    , isCorrect : Maybe Bool
     }
 
 
@@ -35,6 +36,7 @@ init _ =
       , defs = NotAsked
       , answer = ""
       , lastSubmitted = ""
+      , isCorrect = Nothing
       }
     , fetchWords
     )
@@ -166,9 +168,23 @@ update msg model =
             ( { model | answer = s }, Cmd.none )
 
         SubmitAnswer ->
-            ( { model | lastSubmitted = model.answer }, Cmd.none )
+            let
+                isAnswerCorrect =
+                    case model.pickedWord of
+                        Just w ->
+                            String.toLower model.answer == String.toLower w
 
+                        Nothing ->
+                            False
+            in
+            ( { model
+                | lastSubmitted = model.answer
+                , isCorrect = Just isAnswerCorrect
+            }
+            , Cmd.none
+            )
 
+            
 
 -- VIEW
 
@@ -176,8 +192,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ h2 [] [ text ("Word: " ++ (model.pickedWord |> Maybe.withDefault "...")) ]
-        , h2 [] [ text "Definition:" ]
+        [ h2 [] [ text "Definition:" ]
         , textarea
             [ value (definitionText model.pickedWord model.defs)
             , readonly True
@@ -196,12 +211,23 @@ view model =
                 []
             , button
                 [ onClick SubmitAnswer
-                , style "margin" "15px 20px 15px 20px"
+                , style "margin" "15px 20px"
                 , style "background-color" "#333"
                 ]
                 [ text "Validate" ]
             , div [ style "margin-top" "12px" ]
                 [ text ("Last submitted answer: " ++ model.lastSubmitted) ]
+            , case model.isCorrect of
+                Just True ->
+                    div [ style "color" "green", style "margin-top" "12px" ]
+                        [ text "Bravo !" ]
+
+                Just False ->
+                    div [ style "color" "red", style "margin-top" "12px" ]
+                        [ text "Dommage, essaie encore !" ]
+
+                Nothing ->
+                    text ""
             ]
         ]
 
