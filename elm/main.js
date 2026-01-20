@@ -6217,7 +6217,7 @@ var $author$project$Main$fetchWords = $elm$http$Http$get(
 	});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{answer: '', defs: $author$project$Main$NotAsked, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, words: $author$project$Main$Loading},
+		{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, words: $author$project$Main$Loading},
 		$author$project$Main$fetchWords);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6489,6 +6489,7 @@ var $author$project$Main$parseWords = function (content) {
 		},
 		$elm$core$String$words(content));
 };
+var $elm$core$String$toLower = _String_toLower;
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -6575,11 +6576,30 @@ var $author$project$Main$update = F2(
 						model,
 						{answer: s}),
 					$elm$core$Platform$Cmd$none);
-			default:
+			case 'SubmitAnswer':
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{lastSubmitted: model.answer}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var isAnswerCorrect = function () {
+					var _v5 = model.pickedWord;
+					if (_v5.$ === 'Just') {
+						var w = _v5.a;
+						return _Utils_eq(
+							$elm$core$String$toLower(model.answer),
+							$elm$core$String$toLower(w));
+					} else {
+						return false;
+					}
+				}();
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							isCorrect: $elm$core$Maybe$Just(isAnswerCorrect)
+						}),
 					$elm$core$Platform$Cmd$none);
 		}
 	});
@@ -6588,35 +6608,6 @@ var $author$project$Main$AnswerChanged = function (a) {
 };
 var $author$project$Main$SubmitAnswer = {$: 'SubmitAnswer'};
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
-var $author$project$Main$definitionText = function (defs) {
-	switch (defs.$) {
-		case 'NotAsked':
-			return '...';
-		case 'Loading':
-			return 'Loading definition...';
-		case 'Failure':
-			return 'Error while fetching definition (word not found or API error).';
-		default:
-			var ds = defs.a;
-			return $elm$core$List$isEmpty(ds) ? 'No definition found.' : A2(
-				$elm$core$String$join,
-				'\n',
-				A2(
-					$elm$core$List$indexedMap,
-					F2(
-						function (i, d) {
-							return $elm$core$String$fromInt(i + 1) + ('. ' + d);
-						}),
-					ds));
-	}
-};
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -6728,16 +6719,50 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$text('Definition:')
 					])),
-				A2(
-				$elm$html$Html$textarea,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$value(
-						$author$project$Main$definitionText(model.defs)),
-						$elm$html$Html$Attributes$readonly(true),
-						$elm$html$Html$Attributes$rows(10)
-					]),
-				_List_Nil),
+				function () {
+				var _v0 = model.defs;
+				switch (_v0.$) {
+					case 'Success':
+						var ds = _v0.a;
+						return A2(
+							$elm$html$Html$textarea,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(
+									A2(
+										$elm$core$String$join,
+										'\n',
+										A2(
+											$elm$core$List$indexedMap,
+											F2(
+												function (i, d) {
+													return $elm$core$String$fromInt(i + 1) + ('. ' + d);
+												}),
+											ds))),
+									$elm$html$Html$Attributes$readonly(true),
+									$elm$html$Html$Attributes$rows(10)
+								]),
+							_List_Nil);
+					case 'Loading':
+						return A2(
+							$elm$html$Html$div,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Loading definition...')
+								]));
+					case 'Failure':
+						return A2(
+							$elm$html$Html$div,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Error while fetching definition.')
+								]));
+					default:
+						return $elm$html$Html$text('');
+				}
+			}(),
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
@@ -6786,7 +6811,39 @@ var $author$project$Main$view = function (model) {
 							[
 								$elm$html$Html$text('Last submitted answer: ' + model.lastSubmitted)
 							]))
-					]))
+					])),
+				function () {
+				var _v1 = model.isCorrect;
+				if (_v1.$ === 'Just') {
+					if (_v1.a) {
+						return A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'color', 'green'),
+									A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Bravo !')
+								]));
+					} else {
+						return A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'color', 'red'),
+									A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Dommage, essaie encore !')
+								]));
+					}
+				} else {
+					return $elm$html$Html$text('');
+				}
+			}()
 			]));
 };
 var $author$project$Main$main = $elm$browser$Browser$element(

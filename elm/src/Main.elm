@@ -25,6 +25,7 @@ type alias Model =
     , defs : RemoteData Http.Error (List String)
     , answer : String
     , lastSubmitted : String
+    , isCorrect : Maybe Bool
     }
 
 
@@ -35,6 +36,7 @@ init _ =
       , defs = NotAsked
       , answer = ""
       , lastSubmitted = ""
+      , isCorrect = Nothing
       }
     , fetchWords
     )
@@ -50,6 +52,7 @@ type Msg
     | GotDefinitions (Result Http.Error (List String))
     | AnswerChanged String
     | SubmitAnswer
+    | CheckAnswer
 
 
 
@@ -168,7 +171,20 @@ update msg model =
         SubmitAnswer ->
             ( { model | lastSubmitted = model.answer }, Cmd.none )
 
-
+        CheckAnswer -> 
+            let
+                isAnswerCorrect = 
+                    case model.pickedWord of
+                        Just w ->
+                            String.toLower model.answer == String.toLower w 
+                        Nothing ->
+                            False
+    
+            in
+            ( { model | isCorrect = Just isAnswerCorrect}
+            , Cmd.none
+            )
+            
 
 -- VIEW
 
@@ -178,12 +194,26 @@ view model =
     div []
         [ h2 [] [ text ("Word: " ++ (model.pickedWord |> Maybe.withDefault "...")) ]
         , h2 [] [ text "Definition:" ]
-        , textarea
-            [ value (definitionText model.defs)
-            , readonly True
-            , rows 10
-            ]
-            []
+        , case model.defs of 
+            Success ds ->
+                textarea
+                    [value
+                        (ds
+                            |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
+                            |> String.join "\n"
+                        )
+                    , readonly True
+                    , rows 10
+                    ]
+                    []
+            Loading ->
+                div [] [ text "Loading definition..." ]
+
+            Failure _ ->
+                div [] [ text "Error while fetching definition." ]
+
+            NotAsked ->
+                text ""
         , div [ style "margin-top" "16px" ]
             [ h2 [] [ text "Your answer:" ]
             , input
@@ -203,6 +233,18 @@ view model =
             , div [ style "margin-top" "12px" ]
                 [ text ("Last submitted answer: " ++ model.lastSubmitted) ]
             ]
+            , case model.isCorrect of
+                Just True ->
+                    div [ style "color" "green", style "margin-top" "12px" ]
+                        [ text "Bravo !" ]
+
+                Just False ->
+                    div [ style "color" "red", style "margin-top" "12px" ]
+                        [ text "Dommage, essaie encore !" ]
+
+                Nothing ->
+                    text ""
+
         ]
 
 
