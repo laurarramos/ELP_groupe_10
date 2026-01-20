@@ -6217,7 +6217,7 @@ var $author$project$Main$fetchWords = $elm$http$Http$get(
 	});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, words: $author$project$Main$Loading},
+		{answer: '', defs: $author$project$Main$NotAsked, isCorrect: $elm$core$Maybe$Nothing, lastSubmitted: '', pickedWord: $elm$core$Maybe$Nothing, remainingTries: 3, words: $author$project$Main$Loading},
 		$author$project$Main$fetchWords);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6588,12 +6588,14 @@ var $author$project$Main$update = F2(
 						return false;
 					}
 				}();
+				var newRemainingTries = isAnswerCorrect ? model.remainingTries : A2($elm$core$Basics$max, 0, model.remainingTries - 1);
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
 							isCorrect: $elm$core$Maybe$Just(isAnswerCorrect),
-							lastSubmitted: model.answer
+							lastSubmitted: model.answer,
+							remainingTries: newRemainingTries
 						}),
 					$elm$core$Platform$Cmd$none);
 		}
@@ -6806,9 +6808,9 @@ var $author$project$Main$view = function (model) {
 								$elm$html$Html$text('Last submitted answer: ' + model.lastSubmitted)
 							])),
 						function () {
-						var _v0 = model.isCorrect;
-						if (_v0.$ === 'Just') {
-							if (_v0.a) {
+						var _v0 = _Utils_Tuple3(model.isCorrect, model.remainingTries, model.pickedWord);
+						if (_v0.a.$ === 'Just') {
+							if (_v0.a.a) {
 								return A2(
 									$elm$html$Html$div,
 									_List_fromArray(
@@ -6821,17 +6823,33 @@ var $author$project$Main$view = function (model) {
 											$elm$html$Html$text('Bravo !')
 										]));
 							} else {
-								return A2(
-									$elm$html$Html$div,
-									_List_fromArray(
-										[
-											A2($elm$html$Html$Attributes$style, 'color', 'red'),
-											A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
-										]),
-									_List_fromArray(
-										[
-											$elm$html$Html$text('Dommage, essaie encore !')
-										]));
+								if ((!_v0.b) && (_v0.c.$ === 'Just')) {
+									var word = _v0.c.a;
+									return A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'color', 'red'),
+												A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Perdu! Le mot était : ' + word)
+											]));
+								} else {
+									return A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'color', 'red'),
+												A2($elm$html$Html$Attributes$style, 'margin-top', '12px')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text(
+												'Dommage, essaie encore ! Il te reste ' + ($elm$core$String$fromInt(model.remainingTries) + 'essais.'))
+											]));
+								}
 							}
 						} else {
 							return $elm$html$Html$text('');

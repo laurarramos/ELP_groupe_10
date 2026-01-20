@@ -26,6 +26,7 @@ type alias Model =
     , answer : String
     , lastSubmitted : String
     , isCorrect : Maybe Bool
+    , remainingTries : Int
     }
 
 
@@ -37,6 +38,7 @@ init _ =
       , answer = ""
       , lastSubmitted = ""
       , isCorrect = Nothing
+      , remainingTries = 3
       }
     , fetchWords
     )
@@ -176,10 +178,16 @@ update msg model =
 
                         Nothing ->
                             False
+                newRemainingTries =
+                    if isAnswerCorrect then
+                        model.remainingTries
+                    else 
+                        max 0 (model.remainingTries - 1)
             in
             ( { model
                 | lastSubmitted = model.answer
                 , isCorrect = Just isAnswerCorrect
+                , remainingTries = newRemainingTries
             }
             , Cmd.none
             )
@@ -217,16 +225,18 @@ view model =
                 [ text "Validate" ]
             , div [ style "margin-top" "12px" ]
                 [ text ("Last submitted answer: " ++ model.lastSubmitted) ]
-            , case model.isCorrect of
-                Just True ->
+            , case (model.isCorrect, model.remainingTries, model.pickedWord) of
+                (Just True,_,_) ->
                     div [ style "color" "green", style "margin-top" "12px" ]
                         [ text "Bravo !" ]
-
-                Just False ->
+                (Just False, 0, Just word) ->
                     div [ style "color" "red", style "margin-top" "12px" ]
-                        [ text "Dommage, essaie encore !" ]
-
-                Nothing ->
+                        [ text ("Perdu! Le mot était : " ++ word) ]
+                (Just False,_, _) ->
+                    div [ style "color" "red", style "margin-top" "12px" ]
+                        [ text ("Dommage, essaie encore ! Il te reste " ++ String.fromInt model.remainingTries ++ "essais." )]
+                
+                _ ->
                     text ""
             ]
         ]
