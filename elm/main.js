@@ -6734,6 +6734,15 @@ var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -6818,7 +6827,21 @@ var $author$project$Main$view = function (model) {
 										]),
 									_List_fromArray(
 										[
-											$elm$html$Html$text('Bravo !')
+											A2(
+											$elm$html$Html$h2,
+											_List_Nil,
+											_List_fromArray(
+												[
+													$elm$html$Html$text('Well done!')
+												])),
+											A2(
+											$elm$html$Html$div,
+											_List_Nil,
+											_List_fromArray(
+												[
+													$elm$html$Html$text(
+													'Congratulations! You guessed the word: ' + A2($elm$core$Maybe$withDefault, '', model.pickedWord))
+												]))
 										]));
 							} else {
 								return A2(
@@ -6830,7 +6853,7 @@ var $author$project$Main$view = function (model) {
 										]),
 									_List_fromArray(
 										[
-											$elm$html$Html$text('Dommage, essaie encore !')
+											$elm$html$Html$text('Too bad, try again. !')
 										]));
 							}
 						} else {

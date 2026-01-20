@@ -220,11 +220,18 @@ view model =
             , case model.isCorrect of
                 Just True ->
                     div [ style "color" "green", style "margin-top" "12px" ]
-                        [ text "Bravo !" ]
+                        [ h2 [] [ text "Well done!" ]
+                        , div []
+                            [ text
+                                ("Congratulations! You guessed the word: "
+                                    ++ (model.pickedWord |> Maybe.withDefault "")
+                                )
+                            ]
+                        ]
 
                 Just False ->
                     div [ style "color" "red", style "margin-top" "12px" ]
-                        [ text "Dommage, essaie encore !" ]
+                        [ text "Too bad, try again. !" ]
 
                 Nothing ->
                     text ""
