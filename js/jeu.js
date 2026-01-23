@@ -150,7 +150,7 @@ class JeuFlip7 {
                 cible.elimine = true;
                 cible.enJeu = false;
             } else if (carte.nom === 'FLIP THREE') {
-                console.log(`🃏 ${cible.nom} doit piocher 3 nouvelles cartes[cite: 101]!`);
+                console.log(`🃏 ${cible.nom} doit piocher 3 nouvelles cartes!`);
                 for (let i = 0; i < 3; i++) {
                     // On vérifie à chaque pioche si la cible n'a pas perdu entre-temps [cite: 105]
                     if (!cible.elimine) await this.piocherPour(cible);
