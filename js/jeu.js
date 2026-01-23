@@ -78,7 +78,7 @@ class JeuFlip7 {
             joueur.main.push(carte);
             console.log(`> ${joueur.nom} pioche : ${carte.nom || carte.valeur}`);
             if (this.verifierDoublon(joueur)) {
-                console.log(`💥 DOUBLON ! ${joueur.nom} perd ses points pour cette manche.`);
+                console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé pour cette manche.`);
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
@@ -104,86 +104,77 @@ class JeuFlip7 {
     }
 
     async choisirCible(joueurQuiChoisit, nomAction) {
-        // On ne peut cibler que les joueurs encore actifs (enJeu) [cite: 95]
-        const ciblesPossibles = this.joueurs.filter(j => j.enJeu);
-        
-        // Règle : si vous êtes le seul actif, vous subissez l'action 
-        if (ciblesPossibles.length === 1) {
-            console.log(`ℹ️ Un seul joueur actif, ${ciblesPossibles[0].nom} subit l'action.`);
-            return ciblesPossibles[0];
+        const ciblesPossibles = this.joueurs.filter(j => j.enJeu || (j === joueurQuiChoisit && !j.elimine));
+        const ciblesActives = ciblesPossibles.length > 0 ? ciblesPossibles : this.joueurs.filter(j => !j.elimine);
+
+        if (ciblesActives.length === 1) {
+            console.log(`ℹ️ Une seule cible possible, ${ciblesActives[0].nom} subit l'action.`);
+            return ciblesActives[0];
         }
 
-        console.log(`\n🎯 ${joueurQuiChoisit.nom}, sur qui veux-tu appliquer ${nomAction} ?`);
-        ciblesPossibles.forEach((j, i) => {
-            console.log(`${i} : ${j.nom} (Main: ${j.main.length} cartes)`);
-        });
+        console.log(`\n🎯 ${joueurQuiChoisit.nom}, sur qui appliquer ${nomAction} ?`);
+        ciblesActives.forEach((j, i) => console.log(`${i} : ${j.nom}`));
 
         let index = -1;
-        while (isNaN(index) || index < 0 || index >= ciblesPossibles.length) {
-            const rep = await rl.question(`Entre le numéro de la cible choisie : `);
+        while (isNaN(index) || index < 0 || index >= ciblesActives.length) {
+            const rep = await rl.question(`Entre le numéro : `);
             index = parseInt(rep);
         }
-        return ciblesPossibles[index];
+        return ciblesActives[index];
     }
 
     async resoudreAction(carte, joueurPiochant) {
-        console.log(`⚡ ACTION : ${carte.nom} piochée par ${joueurPiochant.nom}`);
-        
         if (carte.nom === 'SECOND CHANCE') {
-            // Si le joueur n'en a pas, il la garde [cite: 108]
             if (!joueurPiochant.aSecondeChance) {
-                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance pour lui.`);
+                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance.`);
                 joueurPiochant.aSecondeChance = true;
             } else {
-                // S'il en a déjà une, il DOIT la donner à un autre 
-                console.log(`⚠️ ${joueurPiochant.nom} a déjà une Seconde Chance !`);
                 const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE");
-                console.log(`❤️ ${joueurPiochant.nom} donne sa Seconde Chance à ${cible.nom}.`);
                 cible.aSecondeChance = true;
             }
         } else {
-            // Pour FREEZE et FLIP THREE, le joueur choisit sa cible [cite: 95]
             const cible = await this.choisirCible(joueurPiochant, carte.nom);
-
             if (carte.nom === 'FREEZE') {
-                console.log(`🧊 ${cible.nom} est gelé ! Il perd ses points et quitte le tour[cite: 99].`);
+                console.log(`🧊 ${cible.nom} est gelé !`);
                 cible.elimine = true;
                 cible.enJeu = false;
             } else if (carte.nom === 'FLIP THREE') {
-                console.log(`🃏 ${cible.nom} doit piocher 3 nouvelles cartes!`);
+                console.log(`🃏 ${cible.nom} doit piocher 3 cartes !`);
+                let actionsAPosteriori = [];
                 for (let i = 0; i < 3; i++) {
-                    // On vérifie à chaque pioche si la cible n'a pas perdu entre-temps [cite: 105]
-                    if (!cible.elimine) await this.piocherPour(cible);
+                    const c = this.pioche.pop();
+                    if (c.type === TYPES.ACTION) {
+                        console.log(`> ${cible.nom} pioche l'action ${c.nom} pendant son Flip Three`);
+                        actionsAPosteriori.push(c);
+                    } else {
+                        cible.main.push(c);
+                        console.log(`> ${cible.nom} pioche : ${c.nom || c.valeur}`);
+                        if (this.verifierDoublon(cible)) {
+                            console.log(`💥 DOUBLON pendant le Flip Three !`);
+                            cible.elimine = true;
+                            cible.enJeu = false;
+                        }
+                    }
+                    if (cible.main.filter(c => c.type === TYPES.NOMBRE).length === 7 && !cible.elimine) break;
                 }
+                for (let act of actionsAPosteriori) await this.resoudreAction(act, cible);
             }
         }
         this.defausse.push(carte); 
     }
 
- calculerScoreTour(joueur) {
-    if (joueur.elimine) return 0;
-
-    let cartesNombre = joueur.main.filter(c => c.type === TYPES.NOMBRE);
-    let base = cartesNombre.reduce((acc, c) => acc + c.valeur, 0);
-
-    if (joueur.main.some(c => c.nom === 'x2')) {
-        base *= 2;
+    calculerScoreTour(joueur) {
+        if (joueur.elimine) return 0;
+        let cartesNombre = joueur.main.filter(c => c.type === TYPES.NOMBRE);
+        let base = cartesNombre.reduce((acc, c) => acc + c.valeur, 0);
+        if (joueur.main.some(c => c.nom === 'x2')) base *= 2;
+        base += joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
+        if (cartesNombre.length >= 7) base += 15;
+        return base;
     }
-
-    let bonus = joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
-    base += bonus;
-
-    if (cartesNombre.length >= 7) {
-        base += 15;
-    }
-    return base;
-}
-
 
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
-        
-        // Distribution initiale d'une carte par joueur
         for (let j of this.joueurs) await this.piocherPour(j);
 
         while (this.joueurs.some(j => j.enJeu)) {
@@ -193,12 +184,16 @@ class JeuFlip7 {
                 console.log(`\nTour de : ${j.nom}`);
                 console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
                 
-                const rep = await rl.question(`${j.nom} (${this.calculerScoreTour(j)} pts), piocher ? (o/n) : `);
+                let rep = "";
+                while (rep !== 'o' && rep !== 'n') {
+                    rep = (await rl.question(`${j.nom} (${this.calculerScoreTour(j)} pts), piocher ? (o/n) : `)).toLowerCase();
+                    if (rep !== 'o' && rep !== 'n') console.log("⚠️ Erreur : veuillez répondre par 'o' ou 'n'.");
+                }
                 
-                if (rep.toLowerCase() === 'o') {
+                if (rep === 'o') {
                     await this.piocherPour(j);
-                    // Arrêt immédiat de la manche si un Flip 7 est réussi
-                    if (j.main.filter(c => c.type === TYPES.NOMBRE).length === 7) {
+                    if (!j.elimine && j.main.filter(c => c.type === TYPES.NOMBRE).length === 7) {
+                        console.log(`\nMain finale de ${j.nom} : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
                         console.log(`✨ FLIP 7 réussi par ${j.nom} ! Fin de la manche.`);
                         this.joueurs.forEach(other => other.enJeu = false);
                         break;
@@ -209,14 +204,12 @@ class JeuFlip7 {
             }
         }
 
-        // Fin de manche : Mise à jour des scores globaux
         console.log(`\n--- RÉSULTATS MANCHE ${this.numManche} ---`);
         this.joueurs.forEach(j => {
             const pts = this.calculerScoreTour(j);
             j.scoreGlobal += pts;
             console.log(`${j.nom} a marqué ${pts} pts.`);
-            this.defausse.push(...j.main); // Les cartes utilisées vont en défausse
-            // Réinitialisation pour la prochaine manche
+            this.defausse.push(...j.main);
             j.main = [];
             j.enJeu = true;
             j.elimine = false;
@@ -226,14 +219,11 @@ class JeuFlip7 {
     }
 
     async lancerPartie() {
-        // La partie s'arrête si au moins un joueur a atteint 200 points à la fin d'un tour
         while (!this.joueurs.some(j => j.scoreGlobal >= 200)) {
             await this.jouerManche();
             console.log("\n--- SCORES TOTAUX ---");
             this.joueurs.forEach(j => console.log(`${j.nom}: ${j.scoreGlobal} pts`));
         }
-
-        // Détermination du vainqueur
         const vainqueur = this.joueurs.reduce((prev, curr) => (prev.scoreGlobal > curr.scoreGlobal) ? prev : curr);
         console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} avec ${vainqueur.scoreGlobal} points !`);
         rl.close();
