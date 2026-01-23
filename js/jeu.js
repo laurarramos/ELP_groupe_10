@@ -42,7 +42,7 @@ class JeuFlip7 {
             aSecondeChance: false
         }));
         this.numManche = 1;
-        this.donneurIndex = 0; // Le premier donneur est le premier joueur
+        this.donneurIndex = 0;
     }
 
     creerPaquet() {
@@ -59,6 +59,25 @@ class JeuFlip7 {
             [tab[i], tab[j]] = [tab[j], tab[i]];
         }
         return tab;
+    }
+
+    afficherEtatPioche() {
+        const stats = this.pioche.reduce((acc, c) => {
+            const label = c.nom || c.valeur.toString();
+            acc[label] = (acc[label] || 0) + 1;
+            return acc;
+        }, {});
+        
+        console.log("\n📊 ÉTAT DE LA PIOCHE (Cartes restantes) :");
+        let ligne = "";
+        Object.keys(stats).sort((a, b) => {
+            if (!isNaN(a) && !isNaN(b)) return parseInt(a) - parseInt(b);
+            return a.localeCompare(b);
+        }).forEach(k => {
+            ligne += `[${k}]:x${stats[k]}  `;
+        });
+        console.log(ligne || "La pioche est vide.");
+        console.log(`Nombre total de cartes : ${this.pioche.length}`);
     }
 
     async piocherPour(joueur) {
@@ -106,7 +125,6 @@ class JeuFlip7 {
 
     async choisirCible(joueurQuiChoisit, nomAction) {
         const ciblesActives = this.joueurs.filter(j => j.enJeu && !j.elimine);
-        
         if (ciblesActives.length === 1) {
             console.log(`ℹ️ Un seul joueur actif, ${ciblesActives[0].nom} subit l'action.`);
             return ciblesActives[0];
@@ -129,12 +147,10 @@ class JeuFlip7 {
                 console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance.`);
                 joueurPiochant.aSecondeChance = true;
             } else {
-                // Si déjà une carte et seul joueur actif, on défausse 
                 const autresActifs = this.joueurs.filter(j => j.enJeu && !j.elimine && j !== joueurPiochant);
                 if (autresActifs.length === 0) {
                     console.log(`⚠️ Seul joueur actif avec Seconde Chance : carte défaussée.`);
                 } else {
-                    console.log(`⚠️ Déjà une Seconde Chance ! Choix d'un autre joueur.`);
                     const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE");
                     cible.aSecondeChance = true;
                 }
@@ -184,9 +200,8 @@ class JeuFlip7 {
 
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
-        console.log(`Le donneur est : ${this.joueurs[this.donneurIndex].nom} `);
+        console.log(`Donneur : ${this.joueurs[this.donneurIndex].nom}`);
 
-        // Distribution initiale
         for (let i = 0; i < this.joueurs.length; i++) {
             let idx = (this.donneurIndex + i) % this.joueurs.length;
             await this.piocherPour(this.joueurs[idx]);
@@ -197,6 +212,9 @@ class JeuFlip7 {
                 let idx = (this.donneurIndex + i) % this.joueurs.length;
                 let j = this.joueurs[idx];
                 if (!j.enJeu) continue;
+
+                // AFFICHAGE AVANT CHAQUE TOUR INDIVIDUEL
+                this.afficherEtatPioche();
 
                 console.log(`\nTour de : ${j.nom}`);
                 console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
@@ -215,30 +233,34 @@ class JeuFlip7 {
                         break;
                     }
                 } else {
-                    j.enJeu = false; // "Rester"
+                    j.enJeu = false;
                 }
             }
         }
 
-        // Fin de manche
+        // AFFICHAGE APRÈS LA FIN DE TOUTE LA MANCHE
+        console.log("\n--- MANCHE TERMINÉE ---");
+        this.afficherEtatPioche();
+
         this.joueurs.forEach(j => {
             const pts = this.calculerScoreTour(j);
             j.scoreGlobal += pts;
-            this.defausse.push(...j.main); // Les cartes sortent du jeu 
+            this.defausse.push(...j.main);
             j.main = []; j.enJeu = true; j.elimine = false; j.aSecondeChance = false;
         });
         
-        this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length; // Donneur suivant à gauche 
+        this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length;
         this.numManche++;
     }
 
     async lancerPartie() {
         while (!this.joueurs.some(j => j.scoreGlobal >= 200)) {
             await this.jouerManche();
+            console.log("\n--- SCORES TOTAUX ---");
             this.joueurs.forEach(j => console.log(`${j.nom}: ${j.scoreGlobal} pts`));
         }
         const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
-        console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} !`);
+        console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} avec ${vainqueur.scoreGlobal} points !`);
         rl.close();
     }
 }
