@@ -42,6 +42,7 @@ class JeuFlip7 {
             aSecondeChance: false
         }));
         this.numManche = 1;
+        this.donneurIndex = 0; // Le premier donneur est le premier joueur [cite: 62]
     }
 
     creerPaquet() {
@@ -62,7 +63,7 @@ class JeuFlip7 {
 
     async piocherPour(joueur) {
         if (this.pioche.length === 0) {
-            console.log("\n🔄 Pioche vide ! Remélange de la défausse...");
+            console.log("\n🔄 Pioche épuisée ! Remélange des cartes défaussées[cite: 146].");
             this.pioche = this.melanger(this.defausse);
             this.defausse = [];
         }
@@ -78,7 +79,7 @@ class JeuFlip7 {
             joueur.main.push(carte);
             console.log(`> ${joueur.nom} pioche : ${carte.nom || carte.valeur}`);
             if (this.verifierDoublon(joueur)) {
-                console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé pour cette manche.`);
+                console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé[cite: 11].`);
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
@@ -93,7 +94,7 @@ class JeuFlip7 {
 
         if (existeDeja) {
             if (joueur.aSecondeChance) {
-                console.log("🛡️ SECONDE CHANCE utilisée ! La carte est défaussée.");
+                console.log("🛡️ SECONDE CHANCE utilisée ! La carte et le bonus sont défaussés[cite: 109].");
                 this.defausse.push(joueur.main.pop());
                 joueur.aSecondeChance = false;
                 return false;
@@ -104,15 +105,14 @@ class JeuFlip7 {
     }
 
     async choisirCible(joueurQuiChoisit, nomAction) {
-        const ciblesPossibles = this.joueurs.filter(j => j.enJeu || (j === joueurQuiChoisit && !j.elimine));
-        const ciblesActives = ciblesPossibles.length > 0 ? ciblesPossibles : this.joueurs.filter(j => !j.elimine);
-
+        const ciblesActives = this.joueurs.filter(j => j.enJeu && !j.elimine);
+        
         if (ciblesActives.length === 1) {
-            console.log(`ℹ️ Une seule cible possible, ${ciblesActives[0].nom} subit l'action.`);
+            console.log(`ℹ️ Un seul joueur actif, ${ciblesActives[0].nom} subit l'action[cite: 96].`);
             return ciblesActives[0];
         }
 
-        console.log(`\n🎯 ${joueurQuiChoisit.nom}, sur qui appliquer ${nomAction} ?`);
+        console.log(`\n🎯 ${joueurQuiChoisit.nom}, sur qui appliquer ${nomAction} ? [cite: 95]`);
         ciblesActives.forEach((j, i) => console.log(`${i} : ${j.nom}`));
 
         let index = -1;
@@ -126,31 +126,40 @@ class JeuFlip7 {
     async resoudreAction(carte, joueurPiochant) {
         if (carte.nom === 'SECOND CHANCE') {
             if (!joueurPiochant.aSecondeChance) {
-                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance.`);
+                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance[cite: 108].`);
                 joueurPiochant.aSecondeChance = true;
             } else {
-                const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE");
-                cible.aSecondeChance = true;
+                // Si déjà une carte et seul joueur actif, on défausse 
+                const autresActifs = this.joueurs.filter(j => j.enJeu && !j.elimine && j !== joueurPiochant);
+                if (autresActifs.length === 0) {
+                    console.log(`⚠️ Seul joueur actif avec Seconde Chance : carte défaussée.`);
+                } else {
+                    console.log(`⚠️ Déjà une Seconde Chance ! Choix d'un autre joueur.`);
+                    const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE");
+                    cible.aSecondeChance = true;
+                }
             }
         } else {
             const cible = await this.choisirCible(joueurPiochant, carte.nom);
             if (carte.nom === 'FREEZE') {
-                console.log(`🧊 ${cible.nom} est gelé !`);
+                console.log(`🧊 ${cible.nom} est gelé ! [cite: 98]`);
                 cible.elimine = true;
                 cible.enJeu = false;
             } else if (carte.nom === 'FLIP THREE') {
-                console.log(`🃏 ${cible.nom} doit piocher 3 cartes !`);
+                console.log(`🃏 ${cible.nom} doit piocher 3 cartes ! [cite: 100]`);
                 let actionsAPosteriori = [];
                 for (let i = 0; i < 3; i++) {
+                    if (this.pioche.length === 0) {
+                        this.pioche = this.melanger(this.defausse);
+                        this.defausse = [];
+                    }
                     const c = this.pioche.pop();
                     if (c.type === TYPES.ACTION) {
-                        console.log(`> ${cible.nom} pioche l'action ${c.nom} pendant son Flip Three`);
                         actionsAPosteriori.push(c);
                     } else {
                         cible.main.push(c);
                         console.log(`> ${cible.nom} pioche : ${c.nom || c.valeur}`);
                         if (this.verifierDoublon(cible)) {
-                            console.log(`💥 DOUBLON pendant le Flip Three !`);
                             cible.elimine = true;
                             cible.enJeu = false;
                         }
@@ -165,20 +174,28 @@ class JeuFlip7 {
 
     calculerScoreTour(joueur) {
         if (joueur.elimine) return 0;
-        let cartesNombre = joueur.main.filter(c => c.type === TYPES.NOMBRE);
-        let base = cartesNombre.reduce((acc, c) => acc + c.valeur, 0);
-        if (joueur.main.some(c => c.nom === 'x2')) base *= 2;
-        base += joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
-        if (cartesNombre.length >= 7) base += 15;
-        return base;
+        let cN = joueur.main.filter(c => c.type === TYPES.NOMBRE);
+        let pts = cN.reduce((acc, c) => acc + c.valeur, 0);
+        if (joueur.main.some(c => c.nom === 'x2')) pts *= 2; // [cite: 117]
+        pts += joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0); // [cite: 116]
+        if (cN.length >= 7) pts += 15; // [cite: 138]
+        return pts;
     }
 
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
-        for (let j of this.joueurs) await this.piocherPour(j);
+        console.log(`Le donneur est : ${this.joueurs[this.donneurIndex].nom} `);
+
+        // Distribution initiale [cite: 63]
+        for (let i = 0; i < this.joueurs.length; i++) {
+            let idx = (this.donneurIndex + i) % this.joueurs.length;
+            await this.piocherPour(this.joueurs[idx]);
+        }
 
         while (this.joueurs.some(j => j.enJeu)) {
-            for (let j of this.joueurs) {
+            for (let i = 0; i < this.joueurs.length; i++) {
+                let idx = (this.donneurIndex + i) % this.joueurs.length;
+                let j = this.joueurs[idx];
                 if (!j.enJeu) continue;
 
                 console.log(`\nTour de : ${j.nom}`);
@@ -187,45 +204,41 @@ class JeuFlip7 {
                 let rep = "";
                 while (rep !== 'o' && rep !== 'n') {
                     rep = (await rl.question(`${j.nom} (${this.calculerScoreTour(j)} pts), piocher ? (o/n) : `)).toLowerCase();
-                    if (rep !== 'o' && rep !== 'n') console.log("⚠️ Erreur : veuillez répondre par 'o' ou 'n'.");
+                    if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
                 }
                 
                 if (rep === 'o') {
                     await this.piocherPour(j);
                     if (!j.elimine && j.main.filter(c => c.type === TYPES.NOMBRE).length === 7) {
-                        console.log(`\nMain finale de ${j.nom} : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
-                        console.log(`✨ FLIP 7 réussi par ${j.nom} ! Fin de la manche.`);
+                        console.log(`✨ FLIP 7 par ${j.nom} ! Fin du tour[cite: 126].`);
                         this.joueurs.forEach(other => other.enJeu = false);
                         break;
                     }
                 } else {
-                    j.enJeu = false;
+                    j.enJeu = false; // "Rester" [cite: 68]
                 }
             }
         }
 
-        console.log(`\n--- RÉSULTATS MANCHE ${this.numManche} ---`);
+        // Fin de manche
         this.joueurs.forEach(j => {
             const pts = this.calculerScoreTour(j);
             j.scoreGlobal += pts;
-            console.log(`${j.nom} a marqué ${pts} pts.`);
-            this.defausse.push(...j.main);
-            j.main = [];
-            j.enJeu = true;
-            j.elimine = false;
-            j.aSecondeChance = false;
+            this.defausse.push(...j.main); // Les cartes sortent du jeu [cite: 144]
+            j.main = []; j.enJeu = true; j.elimine = false; j.aSecondeChance = false;
         });
+        
+        this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length; // Donneur suivant à gauche 
         this.numManche++;
     }
 
     async lancerPartie() {
         while (!this.joueurs.some(j => j.scoreGlobal >= 200)) {
             await this.jouerManche();
-            console.log("\n--- SCORES TOTAUX ---");
             this.joueurs.forEach(j => console.log(`${j.nom}: ${j.scoreGlobal} pts`));
         }
-        const vainqueur = this.joueurs.reduce((prev, curr) => (prev.scoreGlobal > curr.scoreGlobal) ? prev : curr);
-        console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} avec ${vainqueur.scoreGlobal} points !`);
+        const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
+        console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} ! [cite: 151]`);
         rl.close();
     }
 }
