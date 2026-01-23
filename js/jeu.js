@@ -186,5 +186,5 @@ class JeuFlip7 {
     }
 }
 
-const partie = new JeuFlip7(["Laura", "IA_Stephane"]);
+const partie = new JeuFlip7(["Laura", "Flore", "Maksim"]);
 partie.lancerPartie();
