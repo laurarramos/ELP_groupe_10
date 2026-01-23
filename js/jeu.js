@@ -103,20 +103,59 @@ class JeuFlip7 {
         return false;
     }
 
-    async resoudreAction(carte, joueur) {
-        console.log(`⚡ ACTION : ${carte.nom}`);
-        if (carte.nom === 'FREEZE') {
-            console.log(`🧊 ${joueur.nom} est gelé (éliminé du tour) !`);
-            joueur.elimine = true;
-            joueur.enJeu = false;
-        } else if (carte.nom === 'FLIP THREE') {
-            console.log(`🃏 ${joueur.nom} doit piocher 3 nouvelles cartes !`);
-            for (let i = 0; i < 3; i++) {
-                if (!joueur.elimine) await this.piocherPour(joueur);
+    async choisirCible(joueurQuiChoisit, nomAction) {
+        // On ne peut cibler que les joueurs encore actifs (enJeu) [cite: 95]
+        const ciblesPossibles = this.joueurs.filter(j => j.enJeu);
+        
+        // Règle : si vous êtes le seul actif, vous subissez l'action 
+        if (ciblesPossibles.length === 1) {
+            console.log(`ℹ️ Un seul joueur actif, ${ciblesPossibles[0].nom} subit l'action.`);
+            return ciblesPossibles[0];
+        }
+
+        console.log(`\n🎯 ${joueurQuiChoisit.nom}, sur qui veux-tu appliquer ${nomAction} ?`);
+        ciblesPossibles.forEach((j, i) => {
+            console.log(`${i} : ${j.nom} (Main: ${j.main.length} cartes)`);
+        });
+
+        let index = -1;
+        while (isNaN(index) || index < 0 || index >= ciblesPossibles.length) {
+            const rep = await rl.question(`Entre le numéro de la cible choisie : `);
+            index = parseInt(rep);
+        }
+        return ciblesPossibles[index];
+    }
+
+    async resoudreAction(carte, joueurPiochant) {
+        console.log(`⚡ ACTION : ${carte.nom} piochée par ${joueurPiochant.nom}`);
+        
+        if (carte.nom === 'SECOND CHANCE') {
+            // Si le joueur n'en a pas, il la garde [cite: 108]
+            if (!joueurPiochant.aSecondeChance) {
+                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance pour lui.`);
+                joueurPiochant.aSecondeChance = true;
+            } else {
+                // S'il en a déjà une, il DOIT la donner à un autre 
+                console.log(`⚠️ ${joueurPiochant.nom} a déjà une Seconde Chance !`);
+                const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE");
+                console.log(`❤️ ${joueurPiochant.nom} donne sa Seconde Chance à ${cible.nom}.`);
+                cible.aSecondeChance = true;
             }
-        } else if (carte.nom === 'SECOND CHANCE') {
-            console.log(`❤️ ${joueur.nom} garde une Seconde Chance.`);
-            joueur.aSecondeChance = true;
+        } else {
+            // Pour FREEZE et FLIP THREE, le joueur choisit sa cible [cite: 95]
+            const cible = await this.choisirCible(joueurPiochant, carte.nom);
+
+            if (carte.nom === 'FREEZE') {
+                console.log(`🧊 ${cible.nom} est gelé ! Il perd ses points et quitte le tour[cite: 99].`);
+                cible.elimine = true;
+                cible.enJeu = false;
+            } else if (carte.nom === 'FLIP THREE') {
+                console.log(`🃏 ${cible.nom} doit piocher 3 nouvelles cartes[cite: 101]!`);
+                for (let i = 0; i < 3; i++) {
+                    // On vérifie à chaque pioche si la cible n'a pas perdu entre-temps [cite: 105]
+                    if (!cible.elimine) await this.piocherPour(cible);
+                }
+            }
         }
         this.defausse.push(carte); 
     }
