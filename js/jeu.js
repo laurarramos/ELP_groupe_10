@@ -160,14 +160,25 @@ class JeuFlip7 {
         this.defausse.push(carte); 
     }
 
-    calculerScoreTour(joueur) {
-        if (joueur.elimine) return 0;
-        let base = joueur.main.filter(c => c.type === TYPES.NOMBRE).reduce((acc, c) => acc + c.valeur, 0);
-        if (joueur.main.some(c => c.nom === 'x2')) base *= 2;
-        base += joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
-        if (joueur.main.filter(c => c.type === TYPES.NOMBRE).length >= 7) base += 15;
-        return base;
+ calculerScoreTour(joueur) {
+    if (joueur.elimine) return 0;
+
+    let cartesNombre = joueur.main.filter(c => c.type === TYPES.NOMBRE);
+    let base = cartesNombre.reduce((acc, c) => acc + c.valeur, 0);
+
+    if (joueur.main.some(c => c.nom === 'x2')) {
+        base *= 2;
     }
+
+    let bonus = joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
+    base += bonus;
+
+    if (cartesNombre.length >= 7) {
+        base += 15;
+    }
+    return base;
+}
+
 
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
