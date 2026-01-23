@@ -69,7 +69,11 @@ class JeuFlip7 {
         const carte = this.pioche.pop();
         
         if (carte.type === TYPES.ACTION) {
+            console.log(`> ${joueur.nom} pioche : ${carte.nom}`);
             await this.resoudreAction(carte, joueur);
+        } else if (carte.type === TYPES.MODIFIER) {
+            console.log(`> ${joueur.nom} pioche : modifier ${carte.nom}`);
+            joueur.main.push(carte);
         } else {
             joueur.main.push(carte);
             console.log(`> ${joueur.nom} pioche : ${carte.nom || carte.valeur}`);
