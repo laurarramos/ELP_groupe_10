@@ -10,10 +10,10 @@
 - Ouvrir le fichier **index.html**.
 
 ### Comment jouer:
-Devine le mot à partir des définitions proposées.
-Ecris ta réponse dans le champ prévu, et puis sur **Validate**. 
-Après trois essais infructueux, il sera révélé automatiquement.
-Clique sur **Refresh** pour relancer une nouvelle partie.
+ - Devine le mot à partir des définitions proposées.
+ - Ecris ta réponse dans le champ prévu, puis clique sur **Validate**. 
+ - Après trois essais infructueux, il sera révélé automatiquement.
+ - Clique sur **Refresh** pour relancer une nouvelle partie.
 
 
 
