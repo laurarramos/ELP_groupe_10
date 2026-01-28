@@ -222,6 +222,7 @@ class JeuFlip7 {
                 console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
                 
                 let rep = "";
+<<<<<<< HEAD
                 
                 if (j.isIA === true) {
                     const decision = j.action(this); 
@@ -237,6 +238,11 @@ class JeuFlip7 {
                         rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
                         if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
                     }
+=======
+                while (rep !== 'o' && rep !== 'n') {
+                    rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
+                    if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
+>>>>>>> 53939ed53c9dc9c1951adb3c9f4dc444a4900937
                 }
                 
                 if (rep === 'o') {
