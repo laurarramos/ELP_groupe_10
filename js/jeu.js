@@ -7,33 +7,49 @@ class JeuFlip7 {
         this.pioche = this.creerPaquet();
         this.defausse = [];
         this.joueurs = [];
-
-        // Initialisation des joueurs
+        
+        // Initialisation hybride Humains / IA
         for (let i = 0; i < nomsJoueurs.length; i++) {
             const cfg = nomsJoueurs[i];
-
-            if (cfg.isIA === true) {
-                this.joueurs.push(new JoueurIA(cfg.nom));
+            // Si le nom contient [IA] ou si le flag isIA est présent
+            if (cfg.isIA || (typeof cfg === 'string' && cfg.includes("[IA]"))) {
+                this.joueurs.push(new JoueurIA(cfg.nom || cfg));
             } else {
-                this.joueurs.push(new Joueur(cfg.nom));
+                this.joueurs.push(new Joueur(cfg.nom || cfg));
             }
         }
         this.numManche = 1;
         this.donneurIndex = 0;
     }
 
-    // Réseau !!
-
-    // envoie un message à tous les joueurs connectés
-    broadcast(message) {
+    // --- LOGIQUE RÉSEAU ---
+    
+    // Envoie un message à tous les joueurs connectés
+    broadcast(data) {
         this.joueurs.forEach(j => {
-            if (j.socket && j.socket.readyState === 1) {
-                j.socket.send(JSON.stringify(message));
+            if (j.socket && j.socket.readyState === 1) { // 1 = OPEN
+                j.socket.send(JSON.stringify(data));
             }
         });
     }
 
-    // attente asynchrone d'un message d'un joueur (Promesse)
+    // Attente asynchrone d'un message spécifique d'un joueur (Promesse)
+    attendreReponse(joueur, typeAttendu) {
+        if (joueur.isIA) return null; // Les IA ne passent pas par les sockets
+
+        return new Promise((resolve) => {
+            const gestionnaire = (data) => {
+                const message = JSON.parse(data);
+                if (message.type === typeAttendu) {
+                    joueur.socket.removeListener('message', gestionnaire);
+                    resolve(message);
+                }
+            };
+            joueur.socket.on('message', gestionnaire);
+        });
+    }
+
+    // --- LOGIQUE DU JEU ---
 
     creerPaquet() {
         let p = [];
@@ -50,14 +66,14 @@ class JeuFlip7 {
         }
         return tab;
     }
-
+// Sert à debugger / tester
     afficherEtatPioche() {
         const stats = this.pioche.reduce((acc, c) => {
             const label = c.nom || c.valeur.toString();
             acc[label] = (acc[label] || 0) + 1;
             return acc;
         }, {});
-        
+
         console.log("\n📊 ÉTAT DE LA PIOCHE (Cartes restantes) :");
         let ligne = "";
         Object.keys(stats).sort((a, b) => {
@@ -69,31 +85,33 @@ class JeuFlip7 {
         console.log(ligne || "La pioche est vide.");
         console.log(`Nombre total de cartes : ${this.pioche.length}`);
     }
-
+ 
+// Sert à debugger / tester
     async piocherPour(joueur) {
         if (this.pioche.length === 0) {
-            console.log("\n🔄 Pioche épuisée ! Remélange des cartes défaussées.");
+            this.broadcast({ type: "INFO", msg: "🔄 Pioche vide ! Remélange..." });
             this.pioche = this.melanger(this.defausse);
             this.defausse = [];
         }
         const carte = this.pioche.pop();
         
         if (carte.type === TYPES.ACTION) {
-            console.log(`> ${joueur.nom} pioche : ${carte.nom}`);
+            this.broadcast({ type: "INFO", msg: `> ${joueur.nom} pioche ACTION : ${carte.nom}` });
             await this.resoudreAction(carte, joueur);
-        } else if (carte.type === TYPES.MODIFIER) {
-            console.log(`> ${joueur.nom} pioche : modifier ${carte.nom}`);
-            joueur.main.push(carte);
         } else {
             joueur.main.push(carte);
-            console.log(`> ${joueur.nom} pioche : ${carte.valeur}`);
+            this.broadcast({ type: "INFO", msg: `> ${joueur.nom} pioche : ${carte.nom || carte.valeur}` });
+            
             if (this.verifierDoublon(joueur)) {
-                console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé.`);
+                this.broadcast({ type: "INFO", msg: `💥 DOUBLON ! ${joueur.nom} est éliminé.` });
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
         }
+        // Mise à jour visuelle pour tout le monde après chaque pioche
+        this.notifierEtatGlobal();
     }
+
     verifierDoublon(joueur) {
         const nombres = joueur.main.filter(c => c.type === TYPES.NOMBRE && c.valeur !== 0);
         if (nombres.length < 2) return false;
@@ -103,7 +121,7 @@ class JeuFlip7 {
 
         if (existeDeja) {
             if (joueur.aSecondeChance) {
-                console.log("🛡️ SECONDE CHANCE utilisée ! Le doublon est défaussé.");
+                this.broadcast({ type: "INFO", msg: "🛡️ SECONDE CHANCE utilisée !" });
                 this.defausse.push(joueur.main.pop());
                 joueur.aSecondeChance = false;
                 return false;
@@ -115,112 +133,85 @@ class JeuFlip7 {
 
     async choisirCible(joueurQuiChoisit, nomAction, ciblesRestreintes = null) {
         const ciblesActives = ciblesRestreintes || this.joueurs.filter(j => j.enJeu && !j.elimine);
-        
         if (ciblesActives.length === 0) return null;
 
-        if (joueurQuiChoisit.isIA === true) {
-            let candidats = [];
-            for (let i = 0; i < ciblesActives.length; i++) {
-                if (ciblesActives[i] !== joueurQuiChoisit) {
-                    candidats.push(ciblesActives[i]);
-                }
-            }
-
-            let pool = candidats;
-            if (pool.length === 0) {
-                pool = ciblesActives;
-            }
-
-            const idx = Math.floor(Math.random() * pool.length);
-            return pool[idx];
+        // Logique IA
+        if (joueurQuiChoisit.isIA) {
+            const pool = ciblesActives.filter(c => c !== joueurQuiChoisit) || ciblesActives;
+            return pool[Math.floor(Math.random() * pool.length)];
         }
 
-        if (ciblesActives.length === 1) {
-            console.log(`ℹ️ Cible unique : ${ciblesActives[0].nom} subit l'action.`);
-            return ciblesActives[0];
-        }
+        // Logique Réseau
+        joueurQuiChoisit.socket.send(JSON.stringify({
+            type: "CHOISIR_CIBLE",
+            action: nomAction,
+            cibles: ciblesActives.map((c, i) => ({ id: i, nom: c.nom }))
+        }));
 
-        console.log(`\n🎯 ${joueurQuiChoisit.nom}, choisis la cible pour ${nomAction} :`);
-        ciblesActives.forEach((j, i) => console.log(`${i} : ${j.nom}`));
-
-        let index = -1;
-        while (isNaN(index) || index < 0 || index >= ciblesActives.length) {
-            const rep = await this.rl.question(`Numéro du joueur : `);
-            index = parseInt(rep);
-        }
-        return ciblesActives[index];
+        const reponse = await this.attendreReponse(joueurQuiChoisit, "CIBLE_CHOISIE");
+        return ciblesActives[reponse.cibleId];
     }
 
     async resoudreAction(carte, joueurPiochant) {
         if (carte.nom === 'SECOND CHANCE') {
             if (!joueurPiochant.aSecondeChance) {
-                console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance.`);
                 joueurPiochant.aSecondeChance = true;
-                console.log(`🃏 ${joueurPiochant.nom} pioche une carte supplémentaire grâce à la Seconde Chance.`);
                 await this.piocherPour(joueurPiochant);
             } else {
-                console.log(`⚠️ ${joueurPiochant.nom} en a déjà une. Doit la donner à un joueur sans protection.`);
-                // On ne cible que les joueurs ACTIFS qui n'ont PAS de seconde chance 
                 const ciblesEligibles = this.joueurs.filter(j => j.enJeu && !j.elimine && !j.aSecondeChance && j !== joueurPiochant);
-                
-                if (ciblesEligibles.length === 0) {
-                    console.log(`🗑️ Personne n'est éligible. La Seconde Chance est défaussée.`);
-                } else {
+                if (ciblesEligibles.length > 0) {
                     const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE", ciblesEligibles);
-                    if (cible) {
-                        console.log(`❤️ Don de Seconde Chance à ${cible.nom}.`);
-                        cible.aSecondeChance = true;
-                    }
+                    if (cible) cible.aSecondeChance = true;
                 }
             }
         } else {
             const cible = await this.choisirCible(joueurPiochant, carte.nom);
             if (cible) {
                 if (carte.nom === 'FREEZE') {
-                    console.log(`🧊 ${cible.nom} est gelé !`);
                     cible.elimine = true;
                     cible.enJeu = false;
                 } else if (carte.nom === 'FLIP THREE') {
-                    console.log(`🃏 ${cible.nom} subit 3 pioches forcées !`);
-                    let actionsAPosteriori = [];
                     for (let i = 0; i < 3; i++) {
-                        if (this.pioche.length === 0) { this.pioche = this.melanger(this.defausse); this.defausse = []; }
-                        const c = this.pioche.pop();
-                        if (c.type === TYPES.ACTION) {
-                            actionsAPosteriori.push(c);
-                            console.log(`> Pioche ${i+1} : ${c.nom} `);
-                        }
-                        else {
-                            cible.main.push(c);
-                            console.log(`> Pioche ${i+1}: ${c.nom || c.valeur}`);
-                            if (this.verifierDoublon(cible)) { 
-                                cible.elimine = true; 
-                                cible.enJeu = false; 
-                                console.log(`💥 DOUBLON ! ${cible.nom} est éliminé.`);
-                                break; }
-                        }
-
-                        // On vérifie si le joueur atteint 7 cartes NOMBRES
-                        const nbCartesNombres = cible.main.filter(c => c.type === TYPES.NOMBRE).length;
-                        if (nbCartesNombres === 7 && !cible.elimine) {
-                            console.log(`✨ FLIP 7 par ${cible.nom} !`);
-
-                            // On force l'arrêt de TOUS les joueurs pour arrêter la manche
-                            this.joueurs.forEach(j => j.enJeu = false);
-                            break;
-                        }
-                    }
-                    if (this.joueurs.some(j => !j.enJeu)) {
-                        for (let act of actionsAPosteriori) await this.resoudreAction(act, cible);
+                        await this.piocherPour(cible);
+                        if (cible.elimine || this.verifierFlip7(cible)) break;
                     }
                 }
             }
         }
         this.defausse.push(carte); 
     }
-    
+
+    verifierFlip7(joueur) {
+        const nbNombres = joueur.main.filter(c => c.type === TYPES.NOMBRE).length;
+        if (nbNombres === 7 && !joueur.elimine) {
+            this.broadcast({ type: "INFO", msg: `✨ FLIP 7 par ${joueur.nom} !` });
+            this.joueurs.forEach(j => j.enJeu = false);
+            return true;
+        }
+        return false;
+    }
+
+    notifierEtatGlobal() {
+        const etat = {
+            type: "UPDATE_GAME",
+            joueurs: this.joueurs.map(j => ({
+                nom: j.nom,
+                scoreManche: j.calculerScoreManche(),
+                scoreGlobal: j.scoreGlobal,
+                main: j.main.map(c => c.nom || c.valeur),
+                enJeu: j.enJeu,
+                elimine: j.elimine,
+                protege: j.aSecondeChance
+            })),
+            numManche: this.numManche
+        };
+        this.broadcast(etat);
+    }
+
     async jouerManche() {
-        console.log(`\n========== MANCHE ${this.numManche} ==========`);
+        this.broadcast({ type: "INFO", msg: `\n=== MANCHE ${this.numManche} ===` });
+        
+        // Distribution initiale
         for (let i = 0; i < this.joueurs.length; i++) {
             let idx = (this.donneurIndex + i) % this.joueurs.length;
             await this.piocherPour(this.joueurs[idx]);
@@ -232,49 +223,34 @@ class JeuFlip7 {
                 let j = this.joueurs[idx];
                 if (!j.enJeu) continue;
 
-                console.log(`\nTour de : ${j.nom}`);
-                console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
-                
+                this.notifierEtatGlobal();
                 let rep = "";
-                
-                if (j.isIA === true) {
-                    const decision = j.action(this); 
-                    if (decision.type === "PIOCHER") {
-                        console.log(`🤖 ${j.nom} décide de piocher.`);
-                        rep = "o";
-                    } else {
-                        console.log(`🤖 ${j.nom} décide de s'arrêter.`);
-                        rep = "n";
-                    }
+
+                if (j.isIA) {
+                    const decision = j.action(this);
+                    rep = (decision.type === "PIOCHER") ? "o" : "n";
+                    await new Promise(r => setTimeout(r, 1000)); // Pause pour lisibilité
                 } else {
-                    while (rep !== 'o' && rep !== 'n') {
-                        rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
-                        if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
-                    }
+                    j.socket.send(JSON.stringify({ type: "VOTRE_TOUR" }));
+                    const msg = await this.attendreReponse(j, "ACTION_TOUR");
+                    rep = msg.choix;
                 }
-                
-                if (rep === 'o') {
+
+                if (rep === "o") {
                     await this.piocherPour(j);
-                    if (!j.elimine && j.main.filter(c => c.type === TYPES.NOMBRE).length === 7) {
-                        console.log(`✨ FLIP 7 par ${j.nom} !`);
-                        this.joueurs.forEach(other => other.enJeu = false);
-                        break;
-                    }
+                    this.verifierFlip7(j);
                 } else {
                     j.enJeu = false;
                 }
             }
         }
 
-        console.log("\n--- MANCHE TERMINÉE ---");
+        // Fin de manche
         this.joueurs.forEach(j => {
-            const pts = j.calculerScoreManche();
-            j.scoreGlobal += pts;
-            console.log(`${j.nom} marque ${pts} pts (Total: ${j.scoreGlobal})`);
+            j.scoreGlobal += j.calculerScoreManche();
             this.defausse.push(...j.main);
             j.resetManche();
         });
-        
         this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length;
         this.numManche++;
     }
@@ -284,8 +260,7 @@ class JeuFlip7 {
             await this.jouerManche();
         }
         const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
-        console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} !`);
-        this.rl.close();
+        this.broadcast({ type: "GAMEOVER", winner: vainqueur.nom });
     }
 }
 
