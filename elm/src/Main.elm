@@ -256,29 +256,14 @@ view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Definition:" ]
-        , case model.defs of
-            Success ds ->
-                textarea
-                    [ value
-                        (ds
-                            |> List.indexedMap (\i d -> String.fromInt (i + 1) ++ ". " ++ d)
-                            |> String.join "\n"
-                        )
-                    , readonly True
-                    , rows 10
-                    , style "width" "100%"
-                    , style "box-sizing" "border-box"
-                    ]
-                    []
-
-            Loading ->
-                div [] [ text "Loading definition..." ]
-
-            Failure _ ->
-                div [] [ text "Error while fetching definition." ]
-
-            NotAsked ->
-                text ""
+        , textarea
+            [ value (definitionText model.pickedWord model.defs)
+            , readonly True
+            , rows 10
+            , style "width" "100%"
+            , style "box-sizing" "border-box"
+            ]
+            []
         , div [ style "margin-top" "16px" ]
             [ h2 [] [ text "Your answer:" ]
             , input
@@ -443,16 +428,8 @@ definitionText maybeWord defs =
 
 filterDefinitions : String -> List String -> List String
 filterDefinitions word defs =
-    let
-        loweredWord =
-            String.toLower word
-    in
     defs
-        |> List.filter
-            (\d ->
-                not
-                    (String.contains loweredWord (String.toLower d))
-            )
+        |> List.filter (\d -> not (isCheatingDefinition word d))
 
 
 

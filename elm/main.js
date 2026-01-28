@@ -6625,6 +6625,144 @@ var $author$project$Main$AnswerChanged = function (a) {
 };
 var $author$project$Main$SubmitAnswer = {$: 'SubmitAnswer'};
 var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $elm$core$String$endsWith = _String_endsWith;
+var $elm$core$String$filter = _String_filter;
+var $elm$core$Basics$ge = _Utils_ge;
+var $author$project$Main$stem = function (raw) {
+	var w = A2(
+		$elm$core$String$filter,
+		$elm$core$Char$isAlpha,
+		$elm$core$String$toLower(raw));
+	var undouble = function (str) {
+		var n = $elm$core$String$length(str);
+		if (n >= 2) {
+			var b = A3($elm$core$String$slice, n - 2, n - 1, str);
+			var a = A3($elm$core$String$slice, n - 1, n, str);
+			return _Utils_eq(a, b) ? A2($elm$core$String$left, n - 1, str) : str;
+		} else {
+			return str;
+		}
+	};
+	var fixIes = function (str) {
+		return (A2($elm$core$String$endsWith, 'ies', str) && ($elm$core$String$length(str) > 4)) ? (A2(
+			$elm$core$String$left,
+			$elm$core$String$length(str) - 3,
+			str) + 'y') : str;
+	};
+	var dropSuffix = F2(
+		function (suf, str) {
+			return (A2($elm$core$String$endsWith, suf, str) && (_Utils_cmp(
+				$elm$core$String$length(str),
+				$elm$core$String$length(suf) + 2) > 0)) ? A2(
+				$elm$core$String$left,
+				$elm$core$String$length(str) - $elm$core$String$length(suf),
+				str) : str;
+		});
+	return undouble(
+		A2(
+			dropSuffix,
+			's',
+			A2(
+				dropSuffix,
+				'es',
+				A2(
+					dropSuffix,
+					'ed',
+					A2(
+						dropSuffix,
+						'ing',
+						fixIes(w))))));
+};
+var $elm$core$String$map = _String_map;
+var $author$project$Main$tokenize = function (s) {
+	return $elm$core$String$words(
+		A2(
+			$elm$core$String$map,
+			function (c) {
+				return $elm$core$Char$isAlpha(c) ? c : _Utils_chr(' ');
+			},
+			$elm$core$String$toLower(s)));
+};
+var $author$project$Main$isCheatingDefinition = F2(
+	function (word, def) {
+		var wStem = $author$project$Main$stem(word);
+		var tokens = $author$project$Main$tokenize(def);
+		var tokenStems = A2($elm$core$List$map, $author$project$Main$stem, tokens);
+		return A2(
+			$elm$core$List$any,
+			function (tStem) {
+				return (tStem !== '') && _Utils_eq(tStem, wStem);
+			},
+			tokenStems);
+	});
+var $elm$core$Basics$not = _Basics_not;
+var $author$project$Main$filterDefinitions = F2(
+	function (word, defs) {
+		return A2(
+			$elm$core$List$filter,
+			function (d) {
+				return !A2($author$project$Main$isCheatingDefinition, word, d);
+			},
+			defs);
+	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Main$definitionText = F2(
+	function (maybeWord, defs) {
+		switch (defs.$) {
+			case 'NotAsked':
+				return '...';
+			case 'Loading':
+				return 'Loading definition...';
+			case 'Failure':
+				return 'Error while fetching definition (word not found or API error).';
+			default:
+				var ds = defs.a;
+				if (maybeWord.$ === 'Nothing') {
+					return '...';
+				} else {
+					var word = maybeWord.a;
+					var filtered = A2($author$project$Main$filterDefinitions, word, ds);
+					return $elm$core$List$isEmpty(filtered) ? 'All definitions contained the word.' : A2(
+						$elm$core$String$join,
+						'\n',
+						A2(
+							$elm$core$List$indexedMap,
+							F2(
+								function (i, d) {
+									return $elm$core$String$fromInt(i + 1) + ('. ' + d);
+								}),
+							filtered));
+				}
+		}
+	});
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -6825,52 +6963,18 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$text('Definition:')
 					])),
-				function () {
-				var _v0 = model.defs;
-				switch (_v0.$) {
-					case 'Success':
-						var ds = _v0.a;
-						return A2(
-							$elm$html$Html$textarea,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$value(
-									A2(
-										$elm$core$String$join,
-										'\n',
-										A2(
-											$elm$core$List$indexedMap,
-											F2(
-												function (i, d) {
-													return $elm$core$String$fromInt(i + 1) + ('. ' + d);
-												}),
-											ds))),
-									$elm$html$Html$Attributes$readonly(true),
-									$elm$html$Html$Attributes$rows(10),
-									A2($elm$html$Html$Attributes$style, 'width', '100%'),
-									A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
-								]),
-							_List_Nil);
-					case 'Loading':
-						return A2(
-							$elm$html$Html$div,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Loading definition...')
-								]));
-					case 'Failure':
-						return A2(
-							$elm$html$Html$div,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Error while fetching definition.')
-								]));
-					default:
-						return $elm$html$Html$text('');
-				}
-			}(),
+				A2(
+				$elm$html$Html$textarea,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$value(
+						A2($author$project$Main$definitionText, model.pickedWord, model.defs)),
+						$elm$html$Html$Attributes$readonly(true),
+						$elm$html$Html$Attributes$rows(10),
+						A2($elm$html$Html$Attributes$style, 'width', '100%'),
+						A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+					]),
+				_List_Nil),
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
