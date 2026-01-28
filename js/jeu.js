@@ -64,16 +64,18 @@ class JeuFlip7 {
             joueur.main.push(carte);
         } else {
             joueur.main.push(carte);
+            console.log(`> ${joueur.nom} pioche : ${carte.valeur}`);
+            if (this.verifierDoublon(joueur)) {
                 console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé.`);
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
         }
-    
-
+    }
     verifierDoublon(joueur) {
         const nombres = joueur.main.filter(c => c.type === TYPES.NOMBRE && c.valeur !== 0);
-        if (nombres.length === 0) return false;
+        if (nombres.length < 2) return false;
+
         const derniere = nombres[nombres.length - 1];
         const existeDeja = nombres.slice(0, -1).some(c => c.valeur === derniere.valeur);
 
