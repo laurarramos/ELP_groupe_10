@@ -216,7 +216,6 @@ class JeuFlip7 {
     async lancerPartie() {
         while (!this.joueurs.some(j => j.scoreGlobal >= 200)) {
             await this.jouerManche();
-            this.joueurs.forEach(j => console.log(`${j.nom}: ${j.scoreGlobal} pts`));
         }
         const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
         console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} !`);
