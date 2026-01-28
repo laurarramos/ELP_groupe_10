@@ -156,15 +156,26 @@ class JeuFlip7 {
                                 console.log(`💥 DOUBLON ! ${cible.nom} est éliminé.`);
                                 break; }
                         }
-                        if (cible.main.filter(c => c.type === TYPES.NOMBRE).length === 7 && !cible.elimine) break;
+
+                        // On vérifie si le joueur atteint 7 cartes NOMBRES
+                        const nbCartesNombres = cible.main.filter(c => c.type === TYPES.NOMBRE).length;
+                        if (nbCartesNombres === 7 && !cible.elimine) {
+                            console.log(`✨ FLIP 7 par ${cible.nom} !`);
+
+                            // On force l'arrêt de TOUS les joueurs pour arrêter la manche
+                            this.joueurs.forEach(j => j.enJeu = false);
+                            break;
+                        }
                     }
-                    for (let act of actionsAPosteriori) await this.resoudreAction(act, cible);
+                    if (this.joueurs.some(j => !j.enJeu)) {
+                        for (let act of actionsAPosteriori) await this.resoudreAction(act, cible);
+                    }
                 }
             }
         }
         this.defausse.push(carte); 
     }
-
+    
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
         for (let i = 0; i < this.joueurs.length; i++) {
