@@ -146,7 +146,10 @@ class JeuFlip7 {
                     for (let i = 0; i < 3; i++) {
                         if (this.pioche.length === 0) { this.pioche = this.melanger(this.defausse); this.defausse = []; }
                         const c = this.pioche.pop();
-                        if (c.type === TYPES.ACTION) actionsAPosteriori.push(c);
+                        if (c.type === TYPES.ACTION) {
+                            actionsAPosteriori.push(c);
+                            console.log(`> Pioche ${i+1} : ${c.nom} `);
+                        }
                         else {
                             cible.main.push(c);
                             console.log(`> Pioche ${i+1}: ${c.nom || c.valeur}`);
