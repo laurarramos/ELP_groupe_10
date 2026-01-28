@@ -10,8 +10,12 @@ async function demarrer() {
     console.log("Configuration de la partie Flip 7...");
     
     try {
-        const noms = [];
+        let noms = [];
+        let totalJoueurs = 0;
 
+        // On boucle tant qu'on n'a pas au moins 2 joueurs
+        while (totalJoueurs < 2) {
+            noms = []; 
         // 1. Demande du nombre de joueurs humains
         let nbHumains = -1;
         while (isNaN(nbHumains) || nbHumains < 0) {
