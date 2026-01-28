@@ -4,7 +4,8 @@
 
 ### Initialisation :
 - Place-toi dans le dossier **elm** du repository.
-- Compile le projet avec la commande: **elm make src/Main.elm --output=main.js** --> un message 'Success!' doit s'afficher.
+- Compile le projet avec la commande: **elm make src/Main.elm --output=main.js**
+  -> un message 'Success!' doit s'afficher.
 - Lance le serveur de développement: **elm reactor**.
 - Ouvre le lien affiché dans un navigateur de recherche.
 - Ouvrir le fichier **index.html**.
