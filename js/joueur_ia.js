@@ -2,10 +2,6 @@
 const Joueur = require("./joueur");
 const { TYPES } = require("./constants");
 
-/**
- * Joueur IA : même structure qu'un Joueur classique,
- * mais prend ses décisions tout seul.
- */
 class JoueurIA extends Joueur {
     isIA = true;
 
@@ -23,9 +19,6 @@ class JoueurIA extends Joueur {
     };
   }
 
-  /**
-   * Renvoie la liste des valeurs NOMBRE déjà en main (en excluant 0).
-   */
   getValeursNombreMain() {
   const valeurs = [];
 
@@ -60,16 +53,6 @@ class JoueurIA extends Joueur {
   return compteur;
 }
 
-  /**
-   * Proba de piocher un doublon AU PROCHAIN TIRAGE.
-   * Doublon = piocher une carte NOMBRE dont la valeur est déjà en main (hors 0).
-   *
-   * Note: On prend en compte que la pioche contient aussi des ACTION/MODIFIER.
-   * Donc: P = (nb_cartes_dangereuses) / (taille_pioche)
-   *
-   * @param {Array} pioche
-   * @returns {number} proba dans [0,1]
-   */
 probaDoublonProchainTirage(pioche) {
   // Si la pioche est vide, on considère que c'est trop risqué
   if (!pioche || pioche.length === 0) {
@@ -85,7 +68,6 @@ probaDoublonProchainTirage(pioche) {
   }
 
   // Compte combien de chaque valeur il reste dans la pioche
-  // Exemple: { 1: 2, 3: 1, 7: 3 }
   const counts = this.compterNombresDansPioche(pioche);
 
   // On crée une liste de valeurs uniques (pas de doublons)
@@ -98,7 +80,6 @@ probaDoublonProchainTirage(pioche) {
   }
 
   // On additionne le nombre de cartes "dangereuses" restantes dans la pioche
-  // Dangereuse = même valeur qu'une valeur déjà dans la main
   let nbDangereuses = 0;
   for (let i = 0; i < valeursUniques.length; i++) {
     const v = valeursUniques[i];
@@ -113,10 +94,6 @@ probaDoublonProchainTirage(pioche) {
 }
 
 
-  /**
-   * Choisit une cible aléatoire parmi les joueurs actifs (enJeu && !elimine),
-   * en excluant l'IA elle-même.
-   */
   choisirCibleRandom(jeu, predicate = null) {
     const candidats = jeu.joueurs.filter((j) => {
       if (j === this) return false;
@@ -130,14 +107,7 @@ probaDoublonProchainTirage(pioche) {
     return candidats[idx];
   }
 
-  /**
-   * Décide si l'IA doit piocher ou s'arrêter.
-   * Retourne true => pioche, false => stop.
-   *
-   * Règle demandée: comparer P(doublon) à un seuil P.
-   * - si proba < seuil => o (oui)
-   * - sinon => n (non)
-   */
+
   doitPiocher(jeu) {
   // Si la pioche est vide, on considère que c'est trop risqué
   if (!jeu.pioche || jeu.pioche.length === 0) {
@@ -164,15 +134,9 @@ probaDoublonProchainTirage(pioche) {
 }
 
 
-  /**
-   * Méthode à appeler depuis jeu.js pour savoir quoi faire.
-   */
   action(jeu) {
     return this.doitPiocher(jeu) ? { type: "PIOCHER" } : { type: "REFUSER" };
   }
-  /**
-    * Choisit une cible pour une carte ACTION jouée par l'IA.
-   */
   choisirCiblePourAction(jeu, carteAction) {
     if (!carteAction || carteAction.type !== TYPES.ACTION) return null;
 
