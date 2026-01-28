@@ -64,14 +64,12 @@ class JeuFlip7 {
             joueur.main.push(carte);
         } else {
             joueur.main.push(carte);
-            console.log(`> ${joueur.nom} pioche : ${carte.nom || carte.valeur}`);
-            if (this.verifierDoublon(joueur)) {
                 console.log(`💥 DOUBLON ! ${joueur.nom} est éliminé.`);
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
         }
-    }
+    
 
     verifierDoublon(joueur) {
         const nombres = joueur.main.filter(c => c.type === TYPES.NOMBRE && c.valeur !== 0);
@@ -163,16 +161,6 @@ class JeuFlip7 {
         this.defausse.push(carte); 
     }
 
-    calculerScoreTour(joueur) {
-        if (joueur.elimine) return 0;
-        let cN = joueur.main.filter(c => c.type === TYPES.NOMBRE);
-        let pts = cN.reduce((acc, c) => acc + c.valeur, 0);
-        if (joueur.main.some(c => c.nom === 'x2')) pts *= 2;
-        pts += joueur.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
-        if (cN.length >= 7) pts += 15;
-        return pts;
-    }
-
     async jouerManche() {
         console.log(`\n========== MANCHE ${this.numManche} ==========`);
         for (let i = 0; i < this.joueurs.length; i++) {
@@ -191,7 +179,7 @@ class JeuFlip7 {
                 
                 let rep = "";
                 while (rep !== 'o' && rep !== 'n') {
-                    rep = (await rl.question(`${j.nom} (${this.calculerScoreTour(j)} pts), piocher ? (o/n) : `)).toLowerCase();
+                    rep = (await rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
                     if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
                 }
                 
@@ -210,10 +198,11 @@ class JeuFlip7 {
 
         console.log("\n--- MANCHE TERMINÉE ---");
         this.joueurs.forEach(j => {
-            const pts = this.calculerScoreTour(j);
+            const pts = j.calculerScoreManche();
             j.scoreGlobal += pts;
+            console.log(`${j.nom} marque ${pts} pts (Total: ${j.scoreGlobal})`);
             this.defausse.push(...j.main);
-            j.main = []; j.enJeu = true; j.elimine = false; j.aSecondeChance = false;
+            j.resetManche();
         });
         
         this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length;
@@ -232,5 +221,3 @@ class JeuFlip7 {
 }
 
 module.exports = JeuFlip7;
-
-const partie = new JeuFlip7(["Laura", "Flore", "Maksim"]);
