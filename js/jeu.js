@@ -1,12 +1,22 @@
 const { TYPES, CONFIG_PAQUET } = require('./constants.js');
 const Joueur = require('./joueur.js');
+const JoueurIA = require('./joueur_ia.js');
 
 class JeuFlip7 {
     constructor(nomsJoueurs, rl) {
         this.rl = rl;
         this.pioche = this.creerPaquet();
         this.defausse = [];
-        this.joueurs = nomsJoueurs.map(nom => new Joueur(nom));
+        this.joueurs = [];
+        for (let i = 0; i < nomsJoueurs.length; i++) {
+            const cfg = nomsJoueurs[i];
+
+            if (cfg.isIA === true) {
+                this.joueurs.push(new JoueurIA(cfg.nom));
+            } else {
+                this.joueurs.push(new Joueur(cfg.nom));
+            }
+        }
         this.numManche = 1;
         this.donneurIndex = 0;
     }
@@ -93,6 +103,24 @@ class JeuFlip7 {
         const ciblesActives = ciblesRestreintes || this.joueurs.filter(j => j.enJeu && !j.elimine);
         
         if (ciblesActives.length === 0) return null;
+
+        if (joueurQuiChoisit.isIA === true) {
+            let candidats = [];
+            for (let i = 0; i < ciblesActives.length; i++) {
+                if (ciblesActives[i] !== joueurQuiChoisit) {
+                    candidats.push(ciblesActives[i]);
+                }
+            }
+
+            let pool = candidats;
+            if (pool.length === 0) {
+                pool = ciblesActives;
+            }
+
+            const idx = Math.floor(Math.random() * pool.length);
+            return pool[idx];
+        }
+
         if (ciblesActives.length === 1) {
             console.log(`ℹ️ Cible unique : ${ciblesActives[0].nom} subit l'action.`);
             return ciblesActives[0];
@@ -194,9 +222,27 @@ class JeuFlip7 {
                 console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
                 
                 let rep = "";
+<<<<<<< HEAD
+                
+                if (j.isIA === true) {
+                    const decision = j.action(this); 
+                    if (decision.type === "PIOCHER") {
+                        console.log(`🤖 ${j.nom} décide de piocher.`);
+                        rep = "o";
+                    } else {
+                        console.log(`🤖 ${j.nom} décide de s'arrêter.`);
+                        rep = "n";
+                    }
+                } else {
+                    while (rep !== 'o' && rep !== 'n') {
+                        rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
+                        if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
+                    }
+=======
                 while (rep !== 'o' && rep !== 'n') {
                     rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
                     if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
+>>>>>>> 53939ed53c9dc9c1951adb3c9f4dc444a4900937
                 }
                 
                 if (rep === 'o') {

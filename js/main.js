@@ -19,7 +19,8 @@ async function demarrer() {
             
             // 1. Demande du nombre de joueurs humains
             const repH = await rl.question("Combiens de joueurs humains ? ");
-            let nbHumains = parseInt(repH) || 0;
+            let nbHumains = parseInt(repH);
+            if(isNaN(nbHumains) || nbHumains < 0) nbHumains = 0;
             
             for (let i = 1; i <= nbHumains; i++) {
                 let nom = "";
@@ -29,28 +30,30 @@ async function demarrer() {
                         console.log("⚠️ Le nom ne peut pas être vide.");
                     }
                 }
-                noms.push(nom.trim());
+                noms.push({ nom: nom.trim(), isIA: false });
             }
 
             // 2. Demande du nombre de joueurs IA
             const repM = await rl.question("Combiens de joueurs IA ? ");
             let nbIA = parseInt(repM) || 0;
+            if (isNaN(nbIA) || nbIA < 0) nbIA = 0;
             
             for (let i = 1; i <= nbIA; i++) {
                 let nomIA = await rl.question(`Nom de l'IA ${i} (laisser vide pour "IA-${i}") : `);
                 if (nomIA.trim() === "") {
                     nomIA = `IA-${i}`;
                 }
-                // on ajoute un marqueur [IA] pour différencier les IA des humains
-                noms.push(nomIA.trim() + " [IA]");
+                noms.push({ nom: nomIA.trim(), isIA: true });
             }
+
             totalJoueurs = noms.length;
             if (totalJoueurs < 2) {
                 console.log("⚠️ Il faut au moins 2 joueurs pour commencer une partie.");
             }
         }
 
-        console.log(`\n🚀 La partie va commencer avec : ${noms.join(', ')}`);
+        const nomsAffichage = noms.map(j => j.isIA ? `${j.nom} [IA]` : j.nom);
+        console.log(`\n🚀 La partie va commencer avec : ${nomsAffichage.join(', ')}`);
 
         const partie = new JeuFlip7(noms, rl);
         await partie.lancerPartie();
