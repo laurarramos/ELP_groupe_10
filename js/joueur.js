@@ -5,8 +5,8 @@ class Joueur {
         this.nom = nom;
         this.main = [];
         this.scoreGlobal = 0;
-        this.enJeu = true;
-        this.elimine = false;
+        this.enJeu = true; // devient false si le joueur décide de s'arrêter volontairement ou s'il est forcé à s'arrêter (élimination ou fin de tour par un autre joueur)
+        this.elimine = false; // il passe à true uniquement si le joueur pioche un doublon ou s'il a reçu une carte Freeze
         this.aSecondeChance = false;
     }
 
