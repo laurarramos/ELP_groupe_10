@@ -2,7 +2,7 @@ const { TYPES, CONFIG_PAQUET } = require('./constants.js');
 const Joueur = require('./joueur.js');
 
 class JeuFlip7 {
-    constructor(nomsJoueurs) {
+    constructor(nomsJoueurs, rl) {
         this.pioche = this.creerPaquet();
         this.defausse = [];
         this.joueurs = nomsJoueurs.map(nom => new Joueur(nom));

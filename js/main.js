@@ -58,7 +58,7 @@ async function demarrer() {
 
         console.log(`\n🚀 La partie va commencer avec : ${noms.join(', ')}`);
 
-        const partie = new JeuFlip7(noms);
+        const partie = new JeuFlip7(noms, rl);
         await partie.lancerPartie();
     } catch (err) {
         console.error("Une erreur est survenue :", err);
