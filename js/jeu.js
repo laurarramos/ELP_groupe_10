@@ -148,7 +148,11 @@ class JeuFlip7 {
                         else {
                             cible.main.push(c);
                             console.log(`> Pioche ${i+1}: ${c.nom || c.valeur}`);
-                            if (this.verifierDoublon(cible)) { cible.elimine = true; cible.enJeu = false; break; }
+                            if (this.verifierDoublon(cible)) { 
+                                cible.elimine = true; 
+                                cible.enJeu = false; 
+                                console.log(`💥 DOUBLON ! ${cible.nom} est éliminé.`);
+                                break; }
                         }
                         if (cible.main.filter(c => c.type === TYPES.NOMBRE).length === 7 && !cible.elimine) break;
                     }
@@ -182,7 +186,6 @@ class JeuFlip7 {
                 let j = this.joueurs[idx];
                 if (!j.enJeu) continue;
 
-                this.afficherEtatPioche();
                 console.log(`\nTour de : ${j.nom}`);
                 console.log(`Main : [${j.main.map(c => c.nom || c.valeur).join(', ')}]`);
                 
