@@ -3,11 +3,12 @@ const Joueur = require('./joueur.js');
 const JoueurIA = require('./joueur_ia.js');
 
 class JeuFlip7 {
-    constructor(nomsJoueurs, rl) {
-        this.rl = rl;
+    constructor(nomsJoueurs) {
         this.pioche = this.creerPaquet();
         this.defausse = [];
         this.joueurs = [];
+
+        // Initialisation des joueurs
         for (let i = 0; i < nomsJoueurs.length; i++) {
             const cfg = nomsJoueurs[i];
 
@@ -20,6 +21,19 @@ class JeuFlip7 {
         this.numManche = 1;
         this.donneurIndex = 0;
     }
+
+    // Réseau !!
+
+    // envoie un message à tous les joueurs connectés
+    broadcast(message) {
+        this.joueurs.forEach(j => {
+            if (j.socket && j.socket.readyState === 1) {
+                j.socket.send(JSON.stringify(message));
+            }
+        });
+    }
+
+    // attente asynchrone d'un message d'un joueur (Promesse)
 
     creerPaquet() {
         let p = [];

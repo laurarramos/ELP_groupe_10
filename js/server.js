@@ -1,57 +1,46 @@
 const WebSocket = require('ws');
 const JeuFlip7 = require('./jeu');
 
-// Création du serveur WebSocket sur le port 8080
 const wss = new WebSocket.Server({ port: 8080 });
-console.log("Serveur Flip 7 lancé sur le port 8080");
-
 let clientsConnectes = [];
 let partieEnCours = false;
 
 wss.on('connection', (ws) => {
-    console.log("Un joueur s'est connecté.");
-
-    ws.on('message', async (message) => {
+    ws.on('message', (message) => {
         const data = JSON.parse(message);
 
-        // Inscription des joueurs
         if (data.type === 'JOIN') {
-            const estPremier = clientsConnectes.length === 0;
-            clientsConnectes.push({ nom: data.nom, socket: ws, estHote: estPremier});
-
-            ws.send(JSON.stringify({
-                type: 'WELCOME',
-                isHost: estPremier,
-                message: estPremier ? "Vous êtes l'hôte de la partie. attendez les joueurs et lancez la partie." : "Bienvenue ! Attendez que l'hôte lance la partie."
+            const isHost = clientsConnectes.length === 0;
+            clientsConnectes.push({ nom: data.nom, socket: ws, isHost: isHost });
+            
+            ws.send(JSON.stringify({ 
+                type: 'WELCOME', 
+                isHost: isHost,
+                message: isHost ? "Vous êtes l'hôte." : "En attente de l'hôte..."
             }));
-
-            console.log(` ${data.nom} a rejoint la partie. Hôte: ${estPremier}`);
+            broadcast({ type: 'PLAYER_LIST', players: clientsConnectes.map(c => c.nom) });
         }
 
-        // Lancement par l'hôte
         if (data.type === 'START_GAME' && !partieEnCours) {
-            const joueur = clientsConnectes.find(c => c.socket === ws);
-            if (joueur && joueur.estHote) {
-                if (clientsConnectes.length < 2) {
-                    partieEnCours = true;
-                    console.log("Lancement de la partie...");
-                    lancerLaPartieReseau();
-                } else {
-                    ws.send(JSON.stringify({ type: 'ERROR', message: "Il faut au moins 2 joueurs pour commencer la partie." }));
-                }
+            const client = clientsConnectes.find(c => c.socket === ws);
+            if (client?.isHost && clientsConnectes.length >= 2) {
+                partieEnCours = true;
+                lancerLaPartieReseau();
             }
         }
     });
 });
 
+function broadcast(data) {
+    clientsConnectes.forEach(c => c.socket.send(JSON.stringify(data)));
+}
+
 async function lancerLaPartieReseau() {
     const noms = clientsConnectes.map(c => c.nom);
     const partie = new JeuFlip7(noms);
-
-    // On lie les sockets aux instances de joueurs
-    partie.joueurs.forEach((j, index) => {
-        j.socket = clientsConnectes[index].socket;
-    });
+    
+    // Injection des sockets dans les objets Joueur
+    partie.joueurs.forEach((j, i) => { j.socket = clientsConnectes[i].socket; });
 
     await partie.lancerPartie();
 }
