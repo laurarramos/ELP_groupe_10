@@ -195,7 +195,7 @@ class JeuFlip7 {
                 
                 let rep = "";
                 while (rep !== 'o' && rep !== 'n') {
-                    rep = (await rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
+                    rep = (await this.rl.question(`${j.nom} (${j.calculerScoreManche()} pts), piocher ? (o/n) : `)).toLowerCase();
                     if (rep !== 'o' && rep !== 'n') console.log("⚠️ Répondez par 'o' ou 'n'.");
                 }
                 
@@ -231,7 +231,7 @@ class JeuFlip7 {
         }
         const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
         console.log(`\n🏆 VICTOIRE de ${vainqueur.nom} !`);
-        rl.close();
+        this.rl.close();
     }
 }
 
