@@ -1,6 +1,6 @@
 const readline = require('readline/promises');
-
 const { TYPES, CONFIG_PAQUET } = require('./constants.js');
+const Joueur = require('./joueur.js');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -8,14 +8,7 @@ class JeuFlip7 {
     constructor(nomsJoueurs) {
         this.pioche = this.creerPaquet();
         this.defausse = [];
-        this.joueurs = nomsJoueurs.map(nom => ({
-            nom: nom,
-            main: [],
-            scoreGlobal: 0,
-            enJeu: true,
-            elimine: false,
-            aSecondeChance: false
-        }));
+        this.joueurs = nomsJoueurs.map(nom => new Joueur(nom));
         this.numManche = 1;
         this.donneurIndex = 0;
     }
