@@ -1,8 +1,5 @@
-const readline = require('readline/promises');
 const { TYPES, CONFIG_PAQUET } = require('./constants.js');
 const Joueur = require('./joueur.js');
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
 class JeuFlip7 {
     constructor(nomsJoueurs) {
