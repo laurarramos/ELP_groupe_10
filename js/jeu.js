@@ -3,6 +3,7 @@ const Joueur = require('./joueur.js');
 
 class JeuFlip7 {
     constructor(nomsJoueurs, rl) {
+        this.rl = rl;
         this.pioche = this.creerPaquet();
         this.defausse = [];
         this.joueurs = nomsJoueurs.map(nom => new Joueur(nom));
@@ -102,7 +103,7 @@ class JeuFlip7 {
 
         let index = -1;
         while (isNaN(index) || index < 0 || index >= ciblesActives.length) {
-            const rep = await rl.question(`Numéro du joueur : `);
+            const rep = await this.rl.question(`Numéro du joueur : `);
             index = parseInt(rep);
         }
         return ciblesActives[index];
