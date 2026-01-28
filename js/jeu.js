@@ -114,6 +114,8 @@ class JeuFlip7 {
             if (!joueurPiochant.aSecondeChance) {
                 console.log(`❤️ ${joueurPiochant.nom} garde la Seconde Chance.`);
                 joueurPiochant.aSecondeChance = true;
+                console.log(`🃏 ${joueurPiochant.nom} pioche une carte supplémentaire grâce à la Seconde Chance.`);
+                await this.piocherPour(joueurPiochant);
             } else {
                 console.log(`⚠️ ${joueurPiochant.nom} en a déjà une. Doit la donner à un joueur sans protection.`);
                 // On ne cible que les joueurs ACTIFS qui n'ont PAS de seconde chance 
