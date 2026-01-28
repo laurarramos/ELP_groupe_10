@@ -50,6 +50,24 @@ wss.on('connection', (ws) => {
             }
         }
     });
+
+    // pour nettoyer les déconnexions
+    ws.on('close', () => {
+        const index = clientsConnectes.findIndex(c => c.socket === ws);
+        if (index !== -1) {
+            console.log(`${clientsConnectes[index].nom} est parti.`);
+            clientsConnectes.splice(index, 1);
+            
+            // Si l'hôte est parti, on désigne un nouvel hôte
+            if (clientsConnectes.length > 0) {
+                clientsConnectes[0].isHost = true;
+                clientsConnectes[0].socket.send(JSON.stringify({ 
+                    type: 'WELCOME', isHost: true, message: "Vous êtes le nouvel hôte." 
+                }));
+            }
+            broadcast({ type: 'PLAYER_LIST', players: clientsConnectes.map(c => c.nom) });
+        }
+    });
 });
 
 function broadcast(data) {
@@ -57,14 +75,22 @@ function broadcast(data) {
 }
 
 async function lancerLaPartieReseau() {
-    const noms = clientsConnectes.map(c => c.nom);
+    // On crée des objets config pour chaque joueur
+    const noms = clientsConnectes.map(c => ({ nom: c.nom, isIA: false }));
+    
     for (let i = 1; i <= nombreJoueursIA; i++) {
-        noms.push(`IA_${i}`);
+        noms.push({ nom: `IA_${i}`, isIA: true });
     }
+
     const partie = new JeuFlip7(noms);
     
-    // Injection des sockets dans les objets Joueur
-    partie.joueurs.forEach((j, i) => { j.socket = clientsConnectes[i].socket; });
+    // On lie les sockets uniquement aux joueurs humains
+    clientsConnectes.forEach((client, i) => {
+        if (partie.joueurs[i]) {
+            partie.joueurs[i].socket = client.socket;
+        }
+    });
 
+    console.log("Lancement de la partie !"); // Vérifie si ce message s'affiche dans ton terminal
     await partie.lancerPartie();
 }

@@ -117,11 +117,13 @@ class JeuFlip7 {
         if (nombres.length < 2) return false;
 
         const derniere = nombres[nombres.length - 1];
+        // On compare la dernière carte avec toutes les précédentes
         const existeDeja = nombres.slice(0, -1).some(c => c.valeur === derniere.valeur);
 
         if (existeDeja) {
             if (joueur.aSecondeChance) {
                 this.broadcast({ type: "INFO", msg: "🛡️ SECONDE CHANCE utilisée !" });
+                // Retirer le doublon de la main et le mettre en défausse
                 this.defausse.push(joueur.main.pop());
                 joueur.aSecondeChance = false;
                 return false;
@@ -141,13 +143,14 @@ class JeuFlip7 {
             return pool[Math.floor(Math.random() * pool.length)];
         }
 
-        // Logique Réseau
+        // ENVOI AU CLIENT : Demande de choisir une cible
         joueurQuiChoisit.socket.send(JSON.stringify({
             type: "CHOISIR_CIBLE",
             action: nomAction,
             cibles: ciblesActives.map((c, i) => ({ id: i, nom: c.nom }))
         }));
 
+        // ATTENTE : On attend le message 'CIBLE_CHOISIE' du client
         const reponse = await this.attendreReponse(joueurQuiChoisit, "CIBLE_CHOISIE");
         return ciblesActives[reponse.cibleId];
     }

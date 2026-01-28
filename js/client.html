@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Flip 7 Online - INSA</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #game-board { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        .player-card { border: 2px solid #eee; border-radius: 10px; padding: 15px; margin: 10px 0; transition: 0.3s; }
+        .player-card.active { border-color: #007bff; background: #f0f7ff; }
+        .hand { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .card { background: #fff; border: 2px solid #333; border-radius: 6px; padding: 8px 12px; font-weight: bold; min-width: 30px; text-align: center; box-shadow: 2px 2px 0px #333; }
+        .card.special { border-color: #e67e22; color: #e67e22; }
+        #controls, #selection-cible { display: none; margin-top: 20px; padding: 15px; background: #f9f9f9; border: 1px dashed #ccc; text-align: center; }
+        .btn { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; color: white; transition: 0.2s; }
+        .btn-blue { background: #007bff; }
+        .btn-red { background: #dc3545; }
+        #statut { font-weight: bold; color: #007bff; margin: 10px 0; }
+        #logs { height: 80px; overflow-y: auto; background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 5px; font-size: 13px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div id="game-board">
+        <h1>Flip 7 Online 🃏</h1>
+        <div id="statut">Connexion en cours...</div>
+
+        <div id="host-zone" style="display: none;">
+            <p>👑 Mode Hôte activé</p>
+            <button class="btn btn-blue" onclick="lancer()">DÉMARRER LA PARTIE</button>
+        </div>
+
+        <ul id="player-list"></ul>
+        <hr>
+        
+        <div id="plateau"></div>
+
+        <div id="controls">
+            <p>À vous de jouer :</p>
+            <button class="btn btn-blue" onclick="monClient.sendAction('o')">Piocher</button>
+            <button class="btn btn-red" onclick="monClient.sendAction('n')">S'arrêter</button>
+        </div>
+
+        <div id="selection-cible">
+            <h3 id="nom-action"></h3>
+            <div id="liste-cibles"></div>
+        </div>
+
+    </div>
+
+    <script src="client.js"></script>
+    <script>
+        const nomJoueur = prompt("Votre nom :") || "Joueur_" + Math.floor(Math.random()*100);
+        const monClient = new Flip7Client(nomJoueur);
+        monClient.connect();
+
+        function majPlateau(joueurs) {
+        const plateau = document.getElementById('plateau');
+        plateau.innerHTML = "";
+        
+        joueurs.forEach(j => {
+            const div = document.createElement('div');
+            div.className = `player-card ${j.enJeu ? 'active' : ''}`;
+            
+            // Génération du HTML pour les cartes
+            const cartesHtml = j.main.map(c => {
+                // Si 'c' n'est pas un nombre, c'est une carte Action ou Modifier
+                const estAction = isNaN(c); 
+                const classeSpeciale = estAction ? 'special' : '';
+                return `<div class="card ${classeSpeciale}">${c}</div>`;
+            }).join('');
+
+            div.innerHTML = `
+                <strong>${j.nom}</strong> | Global: ${j.scoreGlobal} | Manche: ${j.scoreManche}
+                ${j.elimine ? ' <span style="color:red">❌ ÉLIMINÉ</span>' : ''} 
+                ${j.protege ? ' <span style="color:green">🛡️ PROTÉGÉ</span>' : ''}
+                <div class="hand">${cartesHtml}</div>
+            `;
+            plateau.appendChild(div);
+        });
+    }
+
+        function afficherSelectionCible(action, cibles) {
+            const container = document.getElementById('selection-cible');
+            container.style.display = 'block';
+            document.getElementById('nom-action').innerText = "Cible pour : " + action;
+            const liste = document.getElementById('liste-cibles');
+            liste.innerHTML = "";
+            cibles.forEach(c => {
+                const b = document.createElement('button');
+                b.className = "btn btn-blue";
+                b.style.margin = "5px";
+                b.innerText = c.nom;
+                b.onclick = () => {
+                    monClient.socket.send(JSON.stringify({ type: 'CIBLE_CHOISIE', cibleId: c.id }));
+                    container.style.display = 'none';
+                };
+                liste.appendChild(b);
+            });
+        }
+
+        function lancer() {
+            monClient.sendStartGame();
+            document.getElementById('host-zone').style.display = 'none';
+        }
+
+    </script>
+</body>
+</html>
