@@ -86,29 +86,44 @@ class JeuFlip7 {
         console.log(`Nombre total de cartes : ${this.pioche.length}`);
     }
  
-// Sert à debugger / tester
+
     async piocherPour(joueur) {
+        // 1. Vérification et remélange de la pioche si nécessaire
         if (this.pioche.length === 0) {
             this.broadcast({ type: "INFO", msg: "🔄 Pioche vide ! Remélange..." });
             this.pioche = this.melanger(this.defausse);
             this.defausse = [];
         }
+
+        // 2. Récupération de la carte
         const carte = this.pioche.pop();
         
+        // 3. Ajout immédiat à la main pour que ce soit visible par tous
+        joueur.main.push(carte);
+        
+        // 4. Notification immédiate aux clients pour l'affichage visuel
+        this.notifierEtatGlobal();
+
+        // 5. Traitement selon le type de carte
         if (carte.type === TYPES.ACTION) {
-            this.broadcast({ type: "INFO", msg: `> ${joueur.nom} pioche ACTION : ${carte.nom}` });
+            // Envoi d'un message d'information réseau
+            this.broadcast({ type: "INFO", msg: `> ${joueur.nom} a pioché l'action : ${carte.nom}` });
+            
+            // Résolution de l'action (Freeze, Seconde Chance, etc.)
             await this.resoudreAction(carte, joueur);
         } else {
-            joueur.main.push(carte);
+            // C'est une carte Nombre : message d'info
             this.broadcast({ type: "INFO", msg: `> ${joueur.nom} pioche : ${carte.nom || carte.valeur}` });
             
+            // Vérification des doublons (avec la sécurité sur le nombre de cartes)
             if (this.verifierDoublon(joueur)) {
                 this.broadcast({ type: "INFO", msg: `💥 DOUBLON ! ${joueur.nom} est éliminé.` });
                 joueur.elimine = true;
                 joueur.enJeu = false;
             }
         }
-        // Mise à jour visuelle pour tout le monde après chaque pioche
+
+        // 6. Mise à jour finale de l'état global après résolution
         this.notifierEtatGlobal();
     }
 
@@ -156,32 +171,70 @@ class JeuFlip7 {
     }
 
     async resoudreAction(carte, joueurPiochant) {
+        // ÉTAPE 1 : On montre la carte Action telle quelle (en orange/blanc)
+        // On appelle notifier pour que tout le monde voie ce qui vient d'être pioché
+        this.notifierEtatGlobal();
+        await new Promise(r => setTimeout(r, 1500)); // Pause de 1.5s pour observer la pioche
+
+        // ÉTAPE 2 : Activation de l'action
+        // On marque la carte comme "utilisée" (elle deviendra grise via le CSS)
+        carte.utilisee = true; 
+        this.notifierEtatGlobal();
+        await new Promise(r => setTimeout(r, 800)); // Courte pause "effet visuel"
+
         if (carte.nom === 'SECOND CHANCE') {
             if (!joueurPiochant.aSecondeChance) {
+                this.broadcast({ type: "INFO", msg: `🛡️ ${joueurPiochant.nom} active sa Seconde Chance !` });
                 joueurPiochant.aSecondeChance = true;
-                await this.piocherPour(joueurPiochant);
+                await new Promise(r => setTimeout(r, 1000));
+                // La règle : on pioche immédiatement une autre carte après une protection
+                await this.piocherPour(joueurPiochant); 
             } else {
+                // Le joueur est déjà protégé, il doit choisir une cible
                 const ciblesEligibles = this.joueurs.filter(j => j.enJeu && !j.elimine && !j.aSecondeChance && j !== joueurPiochant);
                 if (ciblesEligibles.length > 0) {
                     const cible = await this.choisirCible(joueurPiochant, "SECOND CHANCE", ciblesEligibles);
-                    if (cible) cible.aSecondeChance = true;
+                    if (cible) {
+                        this.broadcast({ type: "INFO", msg: `🎁 ${joueurPiochant.nom} protège ${cible.nom} !` });
+                        cible.aSecondeChance = true;
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                } else {
+                    this.broadcast({ type: "INFO", msg: `🗑️ Pas de cible valide pour la Seconde Chance.` });
                 }
             }
         } else {
+            // Logique pour les cartes d'attaque : FREEZE et FLIP THREE
+            // Si c'est une IA, elle choisit sa cible instantanément sans ouvrir de fenêtre chez vous
             const cible = await this.choisirCible(joueurPiochant, carte.nom);
+            
             if (cible) {
                 if (carte.nom === 'FREEZE') {
+                    this.broadcast({ type: "INFO", msg: `🧊 ${joueurPiochant.nom} utilise FREEZE sur ${cible.nom} !` });
+                    this.notifierEtatGlobal(); 
+                    await new Promise(r => setTimeout(r, 2000)); // Longue pause pour le suspense
+                    
                     cible.elimine = true;
                     cible.enJeu = false;
-                } else if (carte.nom === 'FLIP THREE') {
+                } 
+                else if (carte.nom === 'FLIP THREE') {
+                    this.broadcast({ type: "INFO", msg: `🃏 ${joueurPiochant.nom} force ${cible.nom} à piocher 3 cartes !` });
+                    this.notifierEtatGlobal();
+                    await new Promise(r => setTimeout(r, 1500));
+                    
+                    // Pioche forcée de 3 cartes avec une pause entre chaque pioche
                     for (let i = 0; i < 3; i++) {
-                        await this.piocherPour(cible);
-                        if (cible.elimine || this.verifierFlip7(cible)) break;
+                        if (cible.elimine) break;
+                        await this.piocherPour(cible); 
+                        await new Promise(r => setTimeout(r, 1200)); // Délai entre chaque carte subie
                     }
                 }
             }
         }
+
+        // ÉTAPE 3 : Finalisation
         this.defausse.push(carte); 
+        this.notifierEtatGlobal();
     }
 
     verifierFlip7(joueur) {
@@ -201,10 +254,15 @@ class JeuFlip7 {
                 nom: j.nom,
                 scoreManche: j.calculerScoreManche(),
                 scoreGlobal: j.scoreGlobal,
-                main: j.main.map(c => c.nom || c.valeur),
                 enJeu: j.enJeu,
                 elimine: j.elimine,
-                protege: j.aSecondeChance
+                // C'est cette ligne qui permet au client de savoir s'il faut afficher le bouclier
+                protege: j.aSecondeChance, 
+                main: j.main.map(c => ({
+                    label: c.nom || c.valeur,
+                    utilisee: c.utilisee || false,
+                    isAction: c.type === TYPES.ACTION
+                }))
             })),
             numManche: this.numManche
         };
@@ -214,56 +272,85 @@ class JeuFlip7 {
     async jouerManche() {
         this.broadcast({ type: "INFO", msg: `\n=== MANCHE ${this.numManche} ===` });
         
-        // Distribution initiale
+        // 1. Distribution initiale : chaque joueur reçoit une carte
         for (let i = 0; i < this.joueurs.length; i++) {
             let idx = (this.donneurIndex + i) % this.joueurs.length;
             await this.piocherPour(this.joueurs[idx]);
         }
 
+        // 2. Boucle principale de la manche
         while (this.joueurs.some(j => j.enJeu)) {
             for (let i = 0; i < this.joueurs.length; i++) {
                 let idx = (this.donneurIndex + i) % this.joueurs.length;
                 let j = this.joueurs[idx];
-                if (!j.enJeu) continue;
+
+                // Sécurité : On saute le tour si le joueur n'est plus en jeu ou a été éliminé (ex: Freeze)
+                if (!j.enJeu || j.elimine) continue;
 
                 this.notifierEtatGlobal();
                 let rep = "";
 
+                // --- Phase de décision ---
                 if (j.isIA) {
                     const decision = j.action(this);
                     rep = (decision.type === "PIOCHER") ? "o" : "n";
-                    await new Promise(r => setTimeout(r, 1000)); // Pause pour lisibilité
+                    // Petite pause pour que les humains puissent suivre l'IA
+                    await new Promise(r => setTimeout(r, 800));
                 } else {
                     j.socket.send(JSON.stringify({ type: "VOTRE_TOUR" }));
                     const msg = await this.attendreReponse(j, "ACTION_TOUR");
                     rep = msg.choix;
                 }
 
+                // --- Phase d'exécution ---
                 if (rep === "o") {
                     await this.piocherPour(j);
-                    this.verifierFlip7(j);
+                    if (!j.elimine) this.verifierFlip7(j);
                 } else {
                     j.enJeu = false;
                 }
+
+                // --- NETTOYAGE DE FIN DE TOUR ---
+                // On retire les cartes Action (grisées) de la main avant de passer au joueur suivant
+                j.main = j.main.filter(c => c.type !== TYPES.ACTION);
+                this.notifierEtatGlobal();
             }
         }
 
-        // Fin de manche
+        // 3. Fin de manche : Calcul des scores et remise à zéro
+        this.broadcast({ type: "INFO", msg: "--- Fin de la manche ---" });
         this.joueurs.forEach(j => {
             j.scoreGlobal += j.calculerScoreManche();
             this.defausse.push(...j.main);
             j.resetManche();
         });
+        
         this.donneurIndex = (this.donneurIndex + 1) % this.joueurs.length;
         this.numManche++;
     }
 
     async lancerPartie() {
-        while (!this.joueurs.some(j => j.scoreGlobal >= 200)) {
+        let partieTerminee = false;
+        
+        while (!partieTerminee) {
             await this.jouerManche();
+            
+            // On vérifie si au moins un joueur a atteint 200 points à la fin de la manche
+            if (this.joueurs.some(j => j.scoreGlobal >= 200)) {
+                partieTerminee = true;
+            }
         }
-        const vainqueur = this.joueurs.reduce((p, c) => (p.scoreGlobal > c.scoreGlobal) ? p : c);
-        this.broadcast({ type: "GAMEOVER", winner: vainqueur.nom });
+
+        // Le vainqueur est celui qui a le plus de points au total
+        const vainqueur = this.joueurs.reduce((prev, current) => 
+            (prev.scoreGlobal > current.scoreGlobal) ? prev : current
+        );
+
+        this.broadcast({ 
+            type: "GAMEOVER", 
+            winner: vainqueur.nom,
+            score: vainqueur.scoreGlobal 
+        });
     }
 }
 

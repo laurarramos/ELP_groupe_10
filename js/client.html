@@ -55,30 +55,41 @@
         monClient.connect();
 
         function majPlateau(joueurs) {
-        const plateau = document.getElementById('plateau');
-        plateau.innerHTML = "";
-        
-        joueurs.forEach(j => {
-            const div = document.createElement('div');
-            div.className = `player-card ${j.enJeu ? 'active' : ''}`;
+            const plateau = document.getElementById('plateau');
+            plateau.innerHTML = "";
             
-            // Génération du HTML pour les cartes
-            const cartesHtml = j.main.map(c => {
-                // Si 'c' n'est pas un nombre, c'est une carte Action ou Modifier
-                const estAction = isNaN(c); 
-                const classeSpeciale = estAction ? 'special' : '';
-                return `<div class="card ${classeSpeciale}">${c}</div>`;
-            }).join('');
+            joueurs.forEach(j => {
+                const div = document.createElement('div');
+                div.className = `player-card ${j.enJeu ? 'active' : ''}`;
+                
+                // Construction du HTML de la main
+                const cartesHtml = j.main.map(c => {
+                    let style = "background: #fff; color: #333;"; 
+                    if (c.utilisee) {
+                        style = "background: #ccc; color: #777; border-color: #999; opacity: 0.6;";
+                    } else if (c.isAction) {
+                        style = "border-color: #e67e22; color: #e67e22; background: #fff;";
+                    }
+                    return `<div class="card" style="${style}">${c.label}</div>`;
+                }).join('');
 
-            div.innerHTML = `
-                <strong>${j.nom}</strong> | Global: ${j.scoreGlobal} | Manche: ${j.scoreManche}
-                ${j.elimine ? ' <span style="color:red">❌ ÉLIMINÉ</span>' : ''} 
-                ${j.protege ? ' <span style="color:green">🛡️ PROTÉGÉ</span>' : ''}
-                <div class="hand">${cartesHtml}</div>
-            `;
-            plateau.appendChild(div);
-        });
-    }
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <strong>${j.nom}</strong>
+                            ${j.protege ? '<span title="Seconde Chance active" style="font-size: 1.2em;">🛡️</span>' : ''}
+                        </div>
+                        <span>
+                            Manche: <b style="color:blue">${j.scoreManche}</b> | 
+                            Total: <b style="color:green">${j.scoreGlobal}</b>
+                        </span>
+                    </div>
+                    ${j.elimine ? '<p style="color:red; font-weight:bold; margin: 5px 0;">❌ ÉLIMINÉ</p>' : ''}
+                    <div class="hand" style="margin-top: 10px;">${cartesHtml}</div>
+                `;
+                plateau.appendChild(div);
+            });
+        }
 
         function afficherSelectionCible(action, cibles) {
             const container = document.getElementById('selection-cible');

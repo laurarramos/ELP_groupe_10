@@ -5,8 +5,8 @@ class Joueur {
         this.nom = nom;
         this.main = [];
         this.scoreGlobal = 0;
-        this.enJeu = true; // devient false si le joueur décide de s'arrêter volontairement ou s'il est forcé à s'arrêter (élimination ou fin de tour par un autre joueur)
-        this.elimine = false; // il passe à true uniquement si le joueur pioche un doublon ou s'il a reçu une carte Freeze
+        this.enJeu = true;
+        this.elimine = false;
         this.aSecondeChance = false;
         this.isIA = false;
     }
@@ -14,19 +14,21 @@ class Joueur {
     calculerScoreManche() {
         if (this.elimine) return 0;
 
-        const cartesNombre = this.main.filter(c => c.type === TYPES.NOMBRE);
+        // On ne compte QUE les cartes de type NOMBRE qui ne sont pas marquées 'utilisee'
+        const cartesNombre = this.main.filter(c => c.type === TYPES.NOMBRE && !c.utilisee);
         let points = cartesNombre.reduce((acc, c) => acc + c.valeur, 0);
 
-        // Multiplicateur x2
-        if (this.main.some(c => c.nom === 'x2')) {
+        // Multiplicateur x2 (uniquement si pas déjà utilisé/défaussé)
+        if (this.main.some(c => c.nom === 'x2' && !c.utilisee)) {
             points *= 2;
         }
 
         // Bonus fixes (+2, +4, ...)
-        const bonusFixes = this.main.filter(c => c.bonus).reduce((acc, c) => acc + c.bonus, 0);
+        const bonusFixes = this.main.filter(c => c.bonus && !c.utilisee)
+                                    .reduce((acc, c) => acc + c.bonus, 0);
         points += bonusFixes;
 
-        // Bonus Flip 7
+        // Bonus Flip 7 : 7 cartes nombres ou plus en main
         if (cartesNombre.length >= 7) {
             points += 15;
         }
@@ -39,6 +41,7 @@ class Joueur {
         this.enJeu = true;
         this.elimine = false;
         this.aSecondeChance = false;
+        // On s'assure que les futures cartes ne seront pas marquées 'utilisee' par erreur
     }
 }
 

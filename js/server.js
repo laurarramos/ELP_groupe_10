@@ -44,9 +44,18 @@ wss.on('connection', (ws) => {
 
         if (data.type === 'START_GAME' && !partieEnCours) {
             const client = clientsConnectes.find(c => c.socket === ws);
-            if (client?.isHost && clientsConnectes.length >= 2) {
+            // Calcul du total : humains connectés + IA configurées
+            const totalJoueurs = clientsConnectes.length + parseInt(nombreJoueursIA);
+
+            if (client?.isHost && totalJoueurs >= 2) { 
                 partieEnCours = true;
+                console.log(`🚀 Lancement avec ${clientsConnectes.length} humains et ${nombreJoueursIA} IA.`);
                 lancerLaPartieReseau();
+            } else if (totalJoueurs < 2) {
+                ws.send(JSON.stringify({ 
+                    type: 'ERROR', 
+                    message: "Il faut au moins 2 joueurs au total (IA comprises) !" 
+                }));
             }
         }
     });
