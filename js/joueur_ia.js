@@ -2,7 +2,7 @@ const Joueur = require("./joueur");
 const { TYPES } = require("./constants");
 
 class JoueurIA extends Joueur {
-  constructor(nom, { seuilDoublon = 0.25, seuilDoublonAvecSecondeChance = 0 } = {}) {
+  constructor(nom, { seuilDoublon = 0.25, seuilDoublonAvecSecondeChance = 1 } = {}) {
     super(nom);
     this.isIA = true;
     this.ia = { seuilDoublon, seuilDoublonAvecSecondeChance };
