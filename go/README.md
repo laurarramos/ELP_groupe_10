@@ -2,7 +2,7 @@
 
 ## 📌 Description
 
-Ce projet est un programme écrit en **Go** permettant de comparer des noms issus d’un ou de deux fichiers **CSV**, afin d'identifier les doublons.  
+Ce projet est un programme écrit en **Go** permettant de comparer des noms et les dates issus d’un ou de deux fichiers **CSV** représentant des bases de données humaines, afin d'identifier les doublons.  
 La similarité entre les noms est évaluée via la **distance de Levenshtein**, et les comparaisons sont parallélisées grâce à un système de **workers** basé sur les **goroutines** et les **channels** de Go.
 
 Le but est d’explorer la lecture de CSV, le *name matching* et la concurrence en Go, en observant l’impact du nombre de workers (et donc du nombre de goroutines de calcul) sur les performances.  
@@ -13,7 +13,7 @@ En pratique, le nombre de goroutines réellement “utiles” est généralement
 ## 🧠 Fonctionnalités
 
 - 📄 Lecture d’un ou de deux fichiers CSV
-- 🔍 Comparaison de chaînes de caractères (noms)
+- 🔍 Comparaison de chaînes de caractères (noms) et de dates
 - 📏 Mesure de similarité via la distance de Levenshtein
 - ⚙️ Exécution concurrente via un pool de workers (goroutines)
 - 🧵 Génération de tâches via un channel (pipeline producteur → workers → résultats)
@@ -82,5 +82,6 @@ Exemple :
     go run ./cmd/analyze /mnt/c/INSA/TC/3A/ELP/golang/datasheets/UniversoGITT_Medellin.csv 8
 
 ---
+
 
 
