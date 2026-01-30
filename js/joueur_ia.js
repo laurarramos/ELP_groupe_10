@@ -2,7 +2,7 @@ const Joueur = require("./joueur");
 const { TYPES } = require("./constants");
 
 class JoueurIA extends Joueur {
-  constructor(nom, { seuilDoublon = 0.25, seuilDoublonAvecSecondeChance = 0.5 } = {}) {
+  constructor(nom, { seuilDoublon = 0.25, seuilDoublonAvecSecondeChance = 0 } = {}) {
     super(nom);
     this.isIA = true;
     this.ia = { seuilDoublon, seuilDoublonAvecSecondeChance };
@@ -32,7 +32,7 @@ class JoueurIA extends Joueur {
     if (valeursMain.length === 0) return 0;
 
     const counts = this.compterNombresDansPioche(pioche);
-    const valeursUniques = [...new Set(valeursMain)]; // Utilisation de Set pour l'élégance
+    const valeursUniques = [...new Set(valeursMain)];
 
     let nbDangereuses = 0;
     for (const v of valeursUniques) {
