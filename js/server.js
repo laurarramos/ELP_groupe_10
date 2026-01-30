@@ -94,9 +94,9 @@ async function lancerLaPartieReseau() {
     const partie = new JeuFlip7(noms);
     
     // On lie les sockets uniquement aux joueurs humains
-    clientsConnectes.forEach((client, i) => {
-        if (partie.joueurs[i]) {
-            partie.joueurs[i].socket = client.socket;
+    clientsConnectes.forEach((client, i) => { // on parcourt la liste de tous les humains connectés (client représente l'objet contenant la socket de la personne et i son index dans la liste)
+        if (partie.joueurs[i]) { // vérif que le joueur existe bien
+            partie.joueurs[i].socket = client.socket; // on prend le socket de l'humain et on le met à l'intérieur de l'ojet Joueur du moteur de jeu
         }
     });
 

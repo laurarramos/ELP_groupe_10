@@ -8,7 +8,7 @@ class Flip7Client {
 
   // Connexion au serveur
   connect() {
-    this.socket = new WebSocket('wss://696f12bdf944.ngrok-free.app'); // URL du serveur WebSocket
+    this.socket = new WebSocket('wss://09b0525b6866.ngrok-free.app'); // URL du serveur WebSocket
 
     this.socket.onopen = () => {
       console.log('Connecté au serveur !');

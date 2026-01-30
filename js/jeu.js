@@ -33,7 +33,7 @@ class JeuFlip7 {
         });
     }
 
-    // Attente asynchrone d'un message spécifique d'un joueur (Promesse)
+    // Attente asynchrone d'un message spécifique d'un joueur (Promesse) --> attente qu un joueur clique sur un bouton
     attendreReponse(joueur, typeAttendu) {
         if (joueur.isIA) return null; // Les IA ne passent pas par les sockets
 

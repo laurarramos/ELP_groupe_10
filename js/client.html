@@ -58,21 +58,21 @@
             const plateau = document.getElementById('plateau');
             plateau.innerHTML = "";
             
-            joueurs.forEach(j => {
+            joueurs.forEach(j => { // boucle sur chaque joueur --> création du bloc visuel
                 const div = document.createElement('div');
                 div.className = `player-card ${j.enJeu ? 'active' : ''}`;
                 
                 // Construction du HTML de la main
                 const cartesHtml = j.main.map(c => {
                     let style = "background: #fff; color: #333;"; 
-                    if (c.utilisee) {
+                    if (c.utilisee) { // carte déjà jouée alors elle devient grise et transparente
                         style = "background: #ccc; color: #777; border-color: #999; opacity: 0.6;";
-                    } else if (c.isAction) {
+                    } else if (c.isAction) { // si carte action alors la bordure est orange
                         style = "border-color: #e67e22; color: #e67e22; background: #fff;";
                     }
                     return `<div class="card" style="${style}">${c.label}</div>`;
                 }).join('');
-
+                // pour l'affichage des scores ont a celui de la manche en bleu et le total en vert + icônes d'etat (bouclier ou éliminer)
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                         <div style="display: flex; align-items: center; gap: 5px;">
@@ -80,7 +80,7 @@
                             ${j.protege ? '<span title="Seconde Chance active" style="font-size: 1.2em;">🛡️</span>' : ''}
                         </div>
                         <span>
-                            Manche: <b style="color:blue">${j.scoreManche}</b> | 
+                            Manche: <b style="color:blue">${j.scoreManche}</b> |
                             Total: <b style="color:green">${j.scoreGlobal}</b>
                         </span>
                     </div>
@@ -91,7 +91,7 @@
             });
         }
 
-        function afficherSelectionCible(action, cibles) {
+        function afficherSelectionCible(action, cibles) { // elle crée dynamiquement les boutons pour chaque adversaire quand il faut utiliser une carte action
             const container = document.getElementById('selection-cible');
             container.style.display = 'block';
             document.getElementById('nom-action').innerText = "Cible pour : " + action;
@@ -102,7 +102,7 @@
                 b.className = "btn btn-blue";
                 b.style.margin = "5px";
                 b.innerText = c.nom;
-                b.onclick = () => {
+                b.onclick = () => { // envoie la cible choisie au serveur et cache la sélection
                     monClient.socket.send(JSON.stringify({ type: 'CIBLE_CHOISIE', cibleId: c.id }));
                     container.style.display = 'none';
                 };
