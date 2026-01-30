@@ -2,7 +2,7 @@
 
 ## 📌 Description
 
-Ce projet est un programme écrit en **Go** permettant de comparer des noms issus d’un ou de deux fichiers **CSV**.  
+Ce projet est un programme écrit en **Go** permettant de comparer des noms issus d’un ou de deux fichiers **CSV**, afin d'identifier les doublons.  
 La similarité entre les noms est évaluée via la **distance de Levenshtein**, et les comparaisons sont parallélisées grâce à un système de **workers** basé sur les **goroutines** et les **channels** de Go.
 
 Le but est d’explorer la lecture de CSV, le *name matching* et la concurrence en Go, en observant l’impact du nombre de workers (et donc du nombre de goroutines de calcul) sur les performances.  
@@ -83,35 +83,4 @@ Exemple :
 
 ---
 
-## 🧾 Paramètres (version avancée)
 
-Selon la version du programme, les arguments peuvent inclure :
-
-    <csv> <workers> <threshold> <printLimit> <bufferSize>
-
-- **workers** : nombre de goroutines de traitement  
-- **threshold** : seuil de similarité / filtrage des résultats (si implémenté)  
-- **printLimit** : limite du nombre de résultats affichés  
-- **bufferSize** : taille du buffer des channels (impact sur le débit du pipeline)
-
----
-
-## 🎯 Objectifs pédagogiques
-
-- Lire et parser des fichiers CSV en Go
-- Mettre en œuvre un algorithme de comparaison de chaînes (Levenshtein)
-- Construire un pipeline concurrent avec goroutines et channels
-- Comprendre l’effet du nombre de workers (souvent lié au nombre de cœurs CPU)
-- Identifier des limites : surcharge de concurrence, organisation du pipeline, gestion du flux
-
----
-
-## 🔧 Pistes d’amélioration
-
-- Identity matching plus robuste que Levenshtein (règles, dictionnaires, heuristiques)
-- Normalisation plus avancée (accents, casse, espaces, particules, prénoms composés)
-- Export des résultats dans un fichier CSV
-- Ajout de métriques (temps total, débit tâches/s) pour comparer les configurations
-- Exploiter davantage les APIs standard Go (ex : gestion de dates si nécessaire)
-
----
